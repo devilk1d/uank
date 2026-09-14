@@ -1,10 +1,11 @@
-// LOKASI: lib/presentation/accounts/providers/account_providers.dart
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../domain/entities/account.dart';
 import '../../../domain/entities/account_balance.dart';
 import '../../repository_providers.dart';
+
+import '../../transactions/providers/transaction_providers.dart';
 
 part 'account_providers.g.dart';
 
@@ -26,9 +27,10 @@ Future<List<AccountBalance>> accountBalances(Ref ref) {
 /// Dipanggil dari layar "Tambah Akun". Setelah sukses, invalidate provider
 /// di atas supaya daftar akun & saldo otomatis ke-refresh tanpa perlu
 /// widget manggil setState manual.
-Future<void> createAccount(Ref ref, Account account) async {
+Future<void> createAccount(WidgetRef ref, Account account, {num initialBalance = 0}) async {
   final repo = ref.read(accountRepositoryProvider);
-  await repo.create(account);
+  await repo.create(account, initialBalance: initialBalance);
   ref.invalidate(accountsProvider);
   ref.invalidate(accountBalancesProvider);
+  ref.invalidate(transactionsProvider);
 }

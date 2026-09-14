@@ -14,6 +14,7 @@ import '../data/transfers/transfer_repository.dart';
 import '../data/bills/bill_repository.dart';
 import '../data/exchange_rates/exchange_rate_repository.dart';
 import '../data/device_token/device_token_repository.dart';
+import '../data/reports/report_repository.dart';
 
 part 'repository_providers.g.dart';
 
@@ -41,3 +42,7 @@ ExchangeRateRepository exchangeRateRepository(Ref ref) =>
 
 @riverpod
 DeviceTokenRepository deviceTokenRepository(Ref ref) => DeviceTokenRepository();
+
+@riverpod
+ReportRepository reportRepository(Ref ref) => ReportRepository();
+

@@ -1,5 +1,4 @@
-// LOKASI: lib/presentation/categories/providers/category_providers.dart
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../domain/entities/category.dart';
@@ -19,7 +18,7 @@ Future<List<Category>> categoriesByType(Ref ref, String type) {
   return repo.getByType(type);
 }
 
-Future<void> createCategory(Ref ref, Category category) async {
+Future<void> createCategory(WidgetRef ref, Category category) async {
   final repo = ref.read(categoryRepositoryProvider);
   await repo.create(category);
   ref.invalidate(categoriesProvider);

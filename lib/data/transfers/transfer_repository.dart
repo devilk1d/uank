@@ -21,4 +21,8 @@ class TransferRepository {
       'notes': transfer.notes,
     });
   }
+
+  Future<void> delete(String id) async {
+    await supabase.from('transfers').delete().eq('id', id);
+  }
 }

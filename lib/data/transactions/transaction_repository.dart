@@ -33,6 +33,18 @@ class TransactionRepository {
     });
   }
 
+  Future<void> update(Transaction transaction) async {
+    await supabase.from('transactions').update({
+      'account_id': transaction.accountId,
+      'category_id': transaction.categoryId,
+      'type': transaction.type,
+      'amount': transaction.amount,
+      'description': transaction.description,
+      'transaction_date':
+          transaction.transactionDate.toIso8601String().split('T').first,
+    }).eq('id', transaction.id);
+  }
+
   Future<void> delete(String transactionId) async {
     await supabase.from('transactions').delete().eq('id', transactionId);
   }

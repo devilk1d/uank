@@ -1,5 +1,4 @@
-// LOKASI: lib/presentation/bills/providers/bill_providers.dart
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../domain/entities/bill.dart';
@@ -21,7 +20,7 @@ Future<List<BillPayment>> currentMonthBillPayments(Ref ref) {
   return repo.getCurrentMonthPayments();
 }
 
-Future<void> createBill(Ref ref, Bill bill) async {
+Future<void> createBill(WidgetRef ref, Bill bill) async {
   final repo = ref.read(billRepositoryProvider);
   await repo.create(bill);
   ref.invalidate(billsProvider);
@@ -32,7 +31,7 @@ Future<void> createBill(Ref ref, Bill bill) async {
 /// operasi atomik. Karena itu di sini juga invalidate transactions &
 /// saldo akun, bukan cuma status tagihan.
 Future<void> payBill(
-  Ref ref, {
+  WidgetRef ref, {
   required String billId,
   required String accountId,
   required num amount,

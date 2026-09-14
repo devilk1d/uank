@@ -1,5 +1,4 @@
-// LOKASI: lib/presentation/transfers/providers/transfer_providers.dart
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../domain/entities/transfer.dart';
@@ -16,9 +15,16 @@ Future<List<Transfer>> transfers(Ref ref) {
 
 /// Transfer mempengaruhi saldo DUA akun sekaligus, makanya yang
 /// di-invalidate adalah accountBalancesProvider (bukan per-akun).
-Future<void> createTransfer(Ref ref, Transfer transfer) async {
+Future<void> createTransfer(WidgetRef ref, Transfer transfer) async {
   final repo = ref.read(transferRepositoryProvider);
   await repo.create(transfer);
+  ref.invalidate(transfersProvider);
+  ref.invalidate(accountBalancesProvider);
+}
+
+Future<void> deleteTransfer(WidgetRef ref, String id) async {
+  final repo = ref.read(transferRepositoryProvider);
+  await repo.delete(id);
   ref.invalidate(transfersProvider);
   ref.invalidate(accountBalancesProvider);
 }
