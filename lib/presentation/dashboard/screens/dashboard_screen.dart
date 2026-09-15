@@ -3,17 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_background.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/glass_card.dart';
-import '../../../core/widgets/circular_progress_badge.dart';
+import '../../../core/widgets/app_dropdown.dart';
 import '../../../domain/entities/account_balance.dart';
+import '../../../domain/entities/bill.dart';
+import '../../../domain/entities/bill_payment.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../accounts/providers/account_providers.dart';
-import '../../accounts/screens/accounts_screen.dart';
+import '../../bills/providers/bill_providers.dart';
 import '../../bills/screens/add_bill_sheet.dart';
 import '../../exchange_rates/screens/exchange_rate_screen.dart';
+import '../../notifications/providers/notification_providers.dart';
+import '../../notifications/screens/notifications_screen.dart';
+import '../../settings/screens/settings_screen.dart';
+import '../../shell/main_shell.dart';
 import '../../transactions/providers/transaction_providers.dart';
 import '../../transactions/screens/add_transaction_sheet.dart';
-import '../../transactions/screens/transactions_screen.dart';
 import '../../transfers/screens/add_transfer_sheet.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -24,17 +28,22 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  int _selectedFilterIndex = 0;
-  final _filters = const ['All', 'Bank', 'E-Wallet', 'Cash'];
   String _activeHeroCurrency = 'IDR';
+  String _overviewTimeframe = 'This month';
   bool _showBalance = true;
 
   @override
   Widget build(BuildContext context) {
     final balancesAsync = ref.watch(accountBalancesProvider);
     final transactionsAsync = ref.watch(transactionsProvider);
+    final billsAsync = ref.watch(billsProvider);
+    final paymentsAsync = ref.watch(currentMonthBillPaymentsProvider);
+    final unreadNotificationCount = ref.watch(unreadNotificationsCountProvider);
+
     final balances = balancesAsync.asData?.value ?? [];
     final transactions = transactionsAsync.asData?.value ?? [];
+    final bills = billsAsync.asData?.value ?? [];
+    final payments = paymentsAsync.asData?.value ?? [];
     final accountMap = {for (final b in balances) b.accountId: b};
 
     return Scaffold(
@@ -43,8 +52,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
             children: [
-              // 1. Header (Avatar, Greeting, Currency Tag & Notification)
-              _buildHeader(),
+              // 1. Header (Avatar, Greeting & Notification)
+              _buildHeader(unreadNotificationCount),
               const SizedBox(height: 20),
 
               // 2. Signature Electric Lime Hero Account Balance Card
@@ -53,21 +62,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 loading: () => const _LoadingHero(),
                 error: (e, _) => _buildHeroBalance([], transactions, accountMap),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 22),
 
-              // 3. Category / Account Type Filter Chips
-              _buildFilterChips(),
-              const SizedBox(height: 20),
-
-              // 4. 4 Quick Action Buttons (Add, Transfer, Bills, Rates)
+              // 3. 4 Quick Action Buttons (Add, Transfer, Bills, Rates)
               _buildQuickActions(),
-              const SizedBox(height: 22),
+              const SizedBox(height: 24),
 
-              // 5. Monthly Budget Card
-              _buildBudgetCard(),
-              const SizedBox(height: 22),
+              // 4. 2x2 Bento Overview Grid (Income, Expenses, Savings, Bills)
+              _buildBentoOverviewSection(transactions, balances, bills, payments, accountMap),
+              const SizedBox(height: 24),
 
-              // 6. Activity / Recent Transactions in Large Dark Card
+              // 5. Activity / Recent Transactions in Large Dark Card
               _buildRecentActivitySection(transactionsAsync, accountMap),
             ],
           ),
@@ -76,7 +81,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(int unpaidBillsCount) {
     final now = DateTime.now();
     final hour = now.hour;
     final greeting = hour < 12
@@ -89,22 +94,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         // Avatar + Greeting
         Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary,
-                border: Border.all(
-                  color: AppColors.primaryLight,
-                  width: 1.5,
-                ),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
               ),
-              child: const Center(
-                child: Icon(
-                  Icons.person_rounded,
-                  color: Colors.black,
-                  size: 22,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primary,
+                  border: Border.all(
+                    color: AppColors.primaryLight,
+                    width: 1.5,
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.person_rounded,
+                    color: Colors.black,
+                    size: 22,
+                  ),
                 ),
               ),
             ),
@@ -133,40 +144,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
 
-        // Right Actions (Currency Indicator Pill + Rates Button)
-        Row(
-          children: [
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _activeHeroCurrency = _activeHeroCurrency == 'IDR' ? 'MYR' : 'IDR';
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  color: AppColors.darkCardBg,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.darkCardBorder),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      _activeHeroCurrency == 'IDR' ? '\u{1F1EE}\u{1F1E9} IDR' : '\u{1F1F2}\u{1F1FE} MYR',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.darkTextPrimary),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.darkTextSecondary),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => ExchangeRateScreen.show(context),
-              child: Container(
-                width: 38,
-                height: 38,
+        // Right Notification Action Button (Opens Notifications Screen)
+        GestureDetector(
+          onTap: () => NotificationsScreen.show(context),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.darkCardBg,
@@ -174,12 +160,44 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 child: const Icon(
                   Icons.notifications_none_rounded,
-                  size: 19,
+                  size: 20,
                   color: AppColors.darkTextPrimary,
                 ),
               ),
-            ),
-          ],
+              if (unpaidBillsCount > 0)
+                Positioned(
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    decoration: BoxDecoration(
+                      color: AppColors.red,
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(color: AppColors.darkBackground, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.red.withValues(alpha: 0.5),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        unpaidBillsCount > 9 ? '9+' : '$unpaidBillsCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ],
     );
@@ -190,16 +208,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     List<Transaction> transactions,
     Map<String, AccountBalance> accountMap,
   ) {
-    final filtered = _selectedFilterIndex == 0
-        ? balances
-        : (_selectedFilterIndex == 1
-            ? balances.where((b) => b.type == 'bank').toList()
-            : (_selectedFilterIndex == 2
-                ? balances.where((b) => b.type == 'ewallet').toList()
-                : balances.where((b) => b.type == 'cash').toList()));
-
-    final idrBalances = filtered.where((b) => b.currency == 'IDR').toList();
-    final myrBalances = filtered.where((b) => b.currency == 'MYR').toList();
+    final idrBalances = balances.where((b) => b.currency == 'IDR').toList();
+    final myrBalances = balances.where((b) => b.currency == 'MYR').toList();
     final totalIdr = idrBalances.fold<num>(0, (sum, b) => sum + b.balance);
     final totalMyr = myrBalances.fold<num>(0, (sum, b) => sum + b.balance);
 
@@ -477,42 +487,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildFilterChips() {
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _filters.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final isSelected = _selectedFilterIndex == index;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedFilterIndex = index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.darkCardBg,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.darkCardBorder,
-                ),
-              ),
-              child: Text(
-                _filters[index],
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? Colors.black : AppColors.darkTextSecondary,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _buildQuickActions() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -545,60 +519,204 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildBudgetCard() {
-    return GlassCard(
-      padding: const EdgeInsets.all(18),
-      child: Row(
-        children: [
-          const CircularProgressBadge(
-            percentage: 0.56,
-            size: 54,
-            strokeWidth: 4.5,
-            progressColor: AppColors.primary,
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Monthly Budget',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.darkTextPrimary,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Rp 1,567,000 of Rp 2,800,000 spent',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.darkTextSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AccountsScreen()),
-              );
-            },
-            child: const Text(
-              'Manage',
+  Widget _buildBentoOverviewSection(
+    List<Transaction> transactions,
+    List<AccountBalance> balances,
+    List<Bill> bills,
+    List<BillPayment> payments,
+    Map<String, AccountBalance> accountMap,
+  ) {
+    // Calculate timeframe boundaries
+    final now = DateTime.now();
+    DateTime startDate;
+    DateTime endDate;
+    DateTime prevStartDate;
+    DateTime prevEndDate;
+
+    if (_overviewTimeframe == 'Last 30 days') {
+      endDate = now;
+      startDate = now.subtract(const Duration(days: 30));
+      prevEndDate = startDate;
+      prevStartDate = startDate.subtract(const Duration(days: 30));
+    } else if (_overviewTimeframe == 'This year') {
+      startDate = DateTime(now.year, 1, 1);
+      endDate = DateTime(now.year, 12, 31, 23, 59, 59);
+      prevStartDate = DateTime(now.year - 1, 1, 1);
+      prevEndDate = DateTime(now.year - 1, 12, 31, 23, 59, 59);
+    } else {
+      // 'This month'
+      startDate = DateTime(now.year, now.month, 1);
+      endDate = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+      prevStartDate = DateTime(now.year, now.month - 1, 1);
+      prevEndDate = DateTime(now.year, now.month, 0, 23, 59, 59);
+    }
+
+    final isIdr = _activeHeroCurrency == 'IDR';
+
+    // Current period transactions
+    final currentPeriodTx = transactions.where((t) {
+      final acc = accountMap[t.accountId];
+      if (acc?.currency != _activeHeroCurrency) return false;
+      return t.transactionDate.isAfter(startDate.subtract(const Duration(seconds: 1))) &&
+          t.transactionDate.isBefore(endDate.add(const Duration(seconds: 1)));
+    }).toList();
+
+    // Previous period transactions
+    final prevPeriodTx = transactions.where((t) {
+      final acc = accountMap[t.accountId];
+      if (acc?.currency != _activeHeroCurrency) return false;
+      return t.transactionDate.isAfter(prevStartDate.subtract(const Duration(seconds: 1))) &&
+          t.transactionDate.isBefore(prevEndDate.add(const Duration(seconds: 1)));
+    }).toList();
+
+    final currentIncome = currentPeriodTx
+        .where((t) => t.type == 'income')
+        .fold<num>(0, (sum, t) => sum + t.amount);
+    final prevIncome = prevPeriodTx
+        .where((t) => t.type == 'income')
+        .fold<num>(0, (sum, t) => sum + t.amount);
+
+    final currentExpense = currentPeriodTx
+        .where((t) => t.type == 'expense')
+        .fold<num>(0, (sum, t) => sum + t.amount);
+    final prevExpense = prevPeriodTx
+        .where((t) => t.type == 'expense')
+        .fold<num>(0, (sum, t) => sum + t.amount);
+
+    final double incomeGrowth = prevIncome > 0
+        ? ((currentIncome - prevIncome) / prevIncome) * 100
+        : (currentIncome > 0 ? 100.0 : 0.0);
+    final double expenseGrowth = prevExpense > 0
+        ? ((currentExpense - prevExpense) / prevExpense) * 100
+        : (currentExpense > 0 ? 100.0 : 0.0);
+
+    final netSavings = currentIncome - currentExpense;
+
+    // Active bills logic
+    final paidBillIds = payments
+        .where((p) => p.status == 'paid')
+        .map((p) => p.billId)
+        .toSet();
+
+    final allUnpaidBills = bills.where((b) => b.isActive && !paidBillIds.contains(b.id)).toList();
+    final currencyBills = bills.where((b) => b.isActive && b.currency == _activeHeroCurrency).toList();
+    final unpaidBills = currencyBills.where((b) => !paidBillIds.contains(b.id)).toList();
+    final totalUnpaidBillsAmount = unpaidBills.fold<num>(0, (sum, b) => sum + b.amount);
+
+    String formattedBills;
+    String billsTrendText;
+    bool? billsPositiveTrend;
+
+    if (unpaidBills.isNotEmpty) {
+      formattedBills = isIdr
+          ? 'Rp ${_formatRupiah(totalUnpaidBillsAmount)}'
+          : 'RM ${_formatMyr(totalUnpaidBillsAmount)}';
+      billsTrendText = '${unpaidBills.length} unpaid';
+      billsPositiveTrend = false;
+    } else if (allUnpaidBills.isNotEmpty) {
+      final otherCurrency = allUnpaidBills.first.currency;
+      final otherTotal = allUnpaidBills
+          .where((b) => b.currency == otherCurrency)
+          .fold<num>(0, (sum, b) => sum + b.amount);
+      formattedBills = otherCurrency == 'IDR'
+          ? 'Rp ${_formatRupiah(otherTotal)}'
+          : 'RM ${_formatMyr(otherTotal)}';
+      billsTrendText = '${allUnpaidBills.length} unpaid ($otherCurrency)';
+      billsPositiveTrend = false;
+    } else {
+      formattedBills = isIdr ? 'Rp 0' : 'RM 0';
+      billsTrendText = 'All paid';
+      billsPositiveTrend = true;
+    }
+
+    final formattedIncome = isIdr ? 'Rp ${_formatRupiah(currentIncome)}' : 'RM ${_formatMyr(currentIncome)}';
+    final formattedExpense = isIdr ? 'Rp ${_formatRupiah(currentExpense)}' : 'RM ${_formatMyr(currentExpense)}';
+    final formattedSavings = isIdr
+        ? (netSavings >= 0 ? 'Rp ${_formatRupiah(netSavings)}' : '-Rp ${_formatRupiah(netSavings.abs())}')
+        : (netSavings >= 0 ? 'RM ${_formatMyr(netSavings)}' : '-RM ${_formatMyr(netSavings.abs())}');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header (Title & Timeframe Filter)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Overview',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.primaryLight,
+                color: AppColors.darkTextPrimary,
               ),
             ),
-          ),
-        ],
-      ),
+            AppFilterDropdown<String>(
+              value: _overviewTimeframe,
+              onChanged: (val) => setState(() => _overviewTimeframe = val),
+              items: const [
+                AppDropdownItem(value: 'This month', label: 'This month'),
+                AppDropdownItem(value: 'Last 30 days', label: 'Last 30 days'),
+                AppDropdownItem(value: 'This year', label: 'This year'),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // 2x2 Bento Grid
+        Row(
+          children: [
+            Expanded(
+              child: _BentoMetricCard(
+                title: 'Income',
+                amount: formattedIncome,
+                icon: Icons.arrow_downward_rounded,
+                accentColor: const Color(0xFF22C55E),
+                trendText: '${incomeGrowth >= 0 ? '+' : ''}${incomeGrowth.abs().toStringAsFixed(1)}%',
+                isPositiveTrend: incomeGrowth >= 0,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _BentoMetricCard(
+                title: 'Expenses',
+                amount: formattedExpense,
+                icon: Icons.receipt_long_rounded,
+                accentColor: const Color(0xFFFF453A),
+                trendText: '${expenseGrowth >= 0 ? '+' : ''}${expenseGrowth.abs().toStringAsFixed(1)}%',
+                isPositiveTrend: expenseGrowth <= 0,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _BentoMetricCard(
+                title: 'Savings',
+                amount: formattedSavings,
+                icon: Icons.savings_rounded,
+                accentColor: const Color(0xFF14B8A6),
+                trendText: netSavings >= 0 ? 'Surplus' : 'Deficit',
+                isPositiveTrend: netSavings >= 0,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _BentoMetricCard(
+                title: 'Bills Due',
+                amount: formattedBills,
+                icon: Icons.calendar_month_rounded,
+                accentColor: const Color(0xFFF59E0B),
+                trendText: billsTrendText,
+                isPositiveTrend: billsPositiveTrend,
+                onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(3),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -616,12 +734,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row inside Card
+          // Header Row inside Card (Title & View all Button)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Activity',
+                'Transactions',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
@@ -629,21 +747,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const TransactionsScreen()),
-                  );
-                },
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.darkCardElevated,
-                    border: Border.all(color: AppColors.darkCardBorder),
-                  ),
-                  child: const Icon(Icons.tune_rounded, size: 16, color: AppColors.darkTextSecondary),
+                onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(1),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'View all',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 12,
+                      color: AppColors.primary,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -730,6 +852,116 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       buffer.write(s[i]);
     }
     return '${buffer.toString()}.${parts[1]}';
+  }
+}
+
+class _BentoMetricCard extends StatelessWidget {
+  const _BentoMetricCard({
+    required this.title,
+    required this.amount,
+    required this.icon,
+    required this.accentColor,
+    this.trendText,
+    this.isPositiveTrend,
+    this.onTap,
+  });
+
+  final String title;
+  final String amount;
+  final IconData icon;
+  final Color accentColor;
+  final String? trendText;
+  final bool? isPositiveTrend;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.darkCardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.darkCardBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 17, color: accentColor),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkTextSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    amount,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.4,
+                      color: AppColors.darkTextPrimary,
+                    ),
+                  ),
+                ),
+                if (trendText != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      if (isPositiveTrend != null)
+                        Icon(
+                          isPositiveTrend! ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                          size: 12,
+                          color: isPositiveTrend! ? AppColors.green : AppColors.orange,
+                        ),
+                      if (isPositiveTrend != null) const SizedBox(width: 2),
+                      Text(
+                        trendText!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isPositiveTrend == null
+                              ? AppColors.darkTextSecondary
+                              : (isPositiveTrend! ? AppColors.green : AppColors.orange),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

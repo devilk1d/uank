@@ -4,47 +4,64 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_background.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/glass_card.dart';
-import '../../cards/screens/cards_screen.dart';
 import '../../categories/screens/categories_screen.dart';
-import '../../insights/screens/insights_screen.dart';
 import '../../repository_providers.dart';
 import '../../theme/theme_mode_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  static Future<void> show(BuildContext context) {
+    return Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(appThemeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
     final authRepo = ref.read(authRepositoryProvider);
+    final canPop = Navigator.canPop(context);
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: canPop
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
+        title: const Text(
+          'Settings & Profile',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.darkTextPrimary,
+          ),
+        ),
+        centerTitle: false,
+      ),
       body: AppBackground(
         child: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
             children: [
-              const Text(
-                'Settings',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.darkTextPrimary,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // User Profile Info
+              // User Profile Info Card
               GlassCard(
                 child: Row(
                   children: [
                     Container(
-                      width: 50,
-                      height: 50,
-                      decoration: const BoxDecoration(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.primary,
+                        border: Border.all(color: AppColors.primaryLight, width: 1.5),
                       ),
                       child: const Center(
                         child: Text(
@@ -60,7 +77,7 @@ class SettingsScreen extends ConsumerWidget {
                         children: [
                           const Text(
                             'User Account',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.darkTextPrimary),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.darkTextPrimary),
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -75,11 +92,11 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               // Preferences Section
               const Text(
-                'Features & Analytics',
+                'Preferences',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
               ),
               const SizedBox(height: 10),
@@ -88,42 +105,6 @@ class SettingsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Column(
                   children: [
-                    // Insights / Reports
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.bar_chart_rounded, color: AppColors.primaryLight),
-                      title: const Text(
-                        'Expense Reports & Analytics',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.darkTextPrimary),
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.darkTextSecondary),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const InsightsScreen()),
-                        );
-                      },
-                    ),
-                    const Divider(color: AppColors.darkCardBorder),
-
-                    // Cards Management
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.credit_card_rounded, color: AppColors.orange),
-                      title: const Text(
-                        'Digital & Physical Cards',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.darkTextPrimary),
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.darkTextSecondary),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const CardsScreen()),
-                        );
-                      },
-                    ),
-                    const Divider(color: AppColors.darkCardBorder),
-
                     // Categories Manager
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -165,7 +146,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
 
-              // About & Logout
+              // Account & App
               const Text(
                 'Account & App',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),

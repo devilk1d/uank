@@ -339,28 +339,37 @@ create or replace function pay_bill(
   p_bill_id uuid,
   p_account_id uuid,
   p_amount numeric,
-  p_category_id uuid default null
+  p_category_id uuid default null,
+  p_period date default null
 )
 returns uuid as $$
 declare
   v_user_id uuid;
+  v_bill_name text;
   v_period date;
   v_tx_id uuid;
 begin
-  select user_id into v_user_id from bills where id = p_bill_id;
-  v_period := date_trunc('month', current_date)::date;
+  select user_id, name into v_user_id, v_bill_name from bills where id = p_bill_id;
+  
+  if p_period is not null then
+    v_period := date_trunc('month', p_period)::date;
+  else
+    v_period := date_trunc('month', current_date)::date;
+  end if;
 
   insert into transactions (user_id, account_id, category_id, type, amount, description, transaction_date)
   values (v_user_id, p_account_id, p_category_id, 'expense', p_amount,
-          'Pembayaran tagihan (auto)', current_date)
+          'Pembayaran ' || coalesce(v_bill_name, 'Tagihan'), coalesce(p_period, current_date))
   returning id into v_tx_id;
 
-  update bill_payments
-  set status = 'paid',
-      amount_paid = p_amount,
-      paid_date = current_date,
-      transaction_id = v_tx_id
-  where bill_id = p_bill_id and period_month = v_period;
+  insert into bill_payments (bill_id, user_id, period_month, amount_paid, paid_date, status, transaction_id)
+  values (p_bill_id, v_user_id, v_period, p_amount, current_date, 'paid', v_tx_id)
+  on conflict (bill_id, period_month)
+  do update set
+    status = 'paid',
+    amount_paid = p_amount,
+    paid_date = current_date,
+    transaction_id = v_tx_id;
 
   return v_tx_id;
 end;

@@ -46,14 +46,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       if (_isSignUp) {
         await authRepo.signUp(email: email, password: password);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account created successfully! Please sign in if needed.'),
-              backgroundColor: AppColors.primary,
-            ),
-          );
-        }
       } else {
         await authRepo.signIn(email: email, password: password);
       }
@@ -163,7 +155,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             keyboardType: TextInputType.emailAddress,
                             style: const TextStyle(
                               fontSize: 14,
-                              color: AppColors.darkTextPrimary,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
                             decoration: InputDecoration(
                               labelText: 'Email',
@@ -177,21 +170,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 color: AppColors.darkTextSecondary,
                               ),
                               filled: true,
-                              fillColor: Colors.black45,
+                              fillColor: AppColors.darkCardBg,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(16),
                                 borderSide: const BorderSide(
                                     color: AppColors.darkCardBorder),
                               ),
                               enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(16),
                                 borderSide: const BorderSide(
                                     color: AppColors.darkCardBorder),
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(16),
                                 borderSide: const BorderSide(
-                                    color: AppColors.primary, width: 1.5),
+                                    color: AppColors.primary, width: 1.2),
                               ),
                             ),
                             validator: (value) {
@@ -212,7 +209,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             obscureText: _obscurePassword,
                             style: const TextStyle(
                               fontSize: 14,
-                              color: AppColors.darkTextPrimary,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
                             decoration: InputDecoration(
                               labelText: 'Password',
@@ -237,21 +235,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     _obscurePassword = !_obscurePassword),
                               ),
                               filled: true,
-                              fillColor: Colors.black45,
+                              fillColor: AppColors.darkCardBg,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(16),
                                 borderSide: const BorderSide(
                                     color: AppColors.darkCardBorder),
                               ),
                               enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(16),
                                 borderSide: const BorderSide(
                                     color: AppColors.darkCardBorder),
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(16),
                                 borderSide: const BorderSide(
-                                    color: AppColors.primary, width: 1.5),
+                                    color: AppColors.primary, width: 1.2),
                               ),
                             ),
                             validator: (value) {
@@ -296,8 +298,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     : Text(
                                         _isSignUp ? 'Sign Up' : 'Sign In',
                                         style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
                                           color: Colors.black,
                                         ),
                                       ),

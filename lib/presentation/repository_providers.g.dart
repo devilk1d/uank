@@ -378,48 +378,50 @@ final class DeviceTokenRepositoryProvider
 String _$deviceTokenRepositoryHash() =>
     r'f60977baa22b633bdd78c79af0bd57b9f6a5864e';
 
-@ProviderFor(reportRepository)
-final reportRepositoryProvider = ReportRepositoryProvider._();
+@ProviderFor(savingGoalRepository)
+final savingGoalRepositoryProvider = SavingGoalRepositoryProvider._();
 
-final class ReportRepositoryProvider
+final class SavingGoalRepositoryProvider
     extends
         $FunctionalProvider<
-          ReportRepository,
-          ReportRepository,
-          ReportRepository
+          SavingGoalRepository,
+          SavingGoalRepository,
+          SavingGoalRepository
         >
-    with $Provider<ReportRepository> {
-  ReportRepositoryProvider._()
+    with $Provider<SavingGoalRepository> {
+  SavingGoalRepositoryProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'reportRepositoryProvider',
+        name: r'savingGoalRepositoryProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$reportRepositoryHash();
+  String debugGetCreateSourceHash() => _$savingGoalRepositoryHash();
 
   @$internal
   @override
-  $ProviderElement<ReportRepository> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
+  $ProviderElement<SavingGoalRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
 
   @override
-  ReportRepository create(Ref ref) {
-    return reportRepository(ref);
+  SavingGoalRepository create(Ref ref) {
+    return savingGoalRepository(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(ReportRepository value) {
+  Override overrideWithValue(SavingGoalRepository value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<ReportRepository>(value),
+      providerOverride: $SyncValueProvider<SavingGoalRepository>(value),
     );
   }
 }
 
-String _$reportRepositoryHash() => r'f2a05b555fc50ec8d01538c773db2a1ce3801a88';
+String _$savingGoalRepositoryHash() =>
+    r'd1d3b49aa51fe401fbfe0af46f023572a62dd3e9';

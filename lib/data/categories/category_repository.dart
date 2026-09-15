@@ -16,11 +16,16 @@ class CategoryRepository {
     return rows.map((row) => Category.fromJson(row)).toList();
   }
 
-  Future<void> create(Category category) async {
-    await supabase.from('categories').insert({
+  Future<Category> create(Category category) async {
+    final row = await supabase.from('categories').insert({
       'name': category.name,
       'type': category.type,
       'icon': category.icon,
-    });
+    }).select().single();
+    return Category.fromJson(row);
+  }
+
+  Future<void> delete(String id) async {
+    await supabase.from('categories').delete().eq('id', id);
   }
 }

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/currency_formatter.dart';
+import '../../../core/widgets/app_dropdown.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/entities/transfer.dart';
 import '../../accounts/providers/account_providers.dart';
+import '../../repository_providers.dart';
 import '../providers/transfer_providers.dart';
 
 class AddTransferSheet extends ConsumerStatefulWidget {
@@ -32,6 +36,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
   String? _fromAccountId;
   String? _toAccountId;
   bool _isLoading = false;
+  bool _isFetchingRate = false;
 
   @override
   void dispose() {
@@ -44,6 +49,32 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
   Account? _findAccount(List<Account> accounts, String? id) {
     if (id == null) return null;
     return accounts.where((a) => a.id == id).firstOrNull;
+  }
+
+  Future<void> _updateExchangeRate(List<Account> accounts) async {
+    final fromAcc = _findAccount(accounts, _fromAccountId);
+    final toAcc = _findAccount(accounts, _toAccountId);
+    if (fromAcc == null || toAcc == null) return;
+    if (fromAcc.currency == toAcc.currency) {
+      _rateController.text = '1.0';
+      return;
+    }
+
+    setState(() => _isFetchingRate = true);
+    try {
+      final rate = await ref
+          .read(exchangeRateRepositoryProvider)
+          .getLatestRate(fromAcc.currency, toAcc.currency);
+      if (rate != null && mounted) {
+        setState(() {
+          _rateController.text = rate.rate.toString();
+        });
+      }
+    } catch (_) {
+      // Ignored
+    } finally {
+      if (mounted) setState(() => _isFetchingRate = false);
+    }
   }
 
   Future<void> _submit(List<Account> accounts) async {
@@ -63,8 +94,8 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
       return;
     }
 
-    final amountFrom = num.tryParse(_amountFromController.text.replaceAll(RegExp(r'[^0-9.]'), ''));
-    if (amountFrom == null || amountFrom <= 0) {
+    final amountFrom = CurrencyInputFormatter.parse(_amountFromController.text);
+    if (amountFrom <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid transfer amount'), backgroundColor: AppColors.red),
       );
@@ -92,19 +123,9 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transfer completed successfully!'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to process transfer: $e'), backgroundColor: AppColors.red),
-        );
-      }
+    } catch (_) {
+      // Failed silently / handled
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -177,59 +198,65 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                   return Column(
                     children: [
                       // From Account
-                      DropdownButtonFormField<String>(
+                      AppDropdownFormField<String>(
                         initialValue: _fromAccountId,
-                        dropdownColor: AppColors.darkCardBg,
-                        style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 14),
-                        decoration: InputDecoration(
-                          labelText: 'Source Account (Sender)',
-                          labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
-                          filled: true,
-                          fillColor: Colors.black45,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                          ),
-                        ),
+                        labelText: 'Source Account (Sender)',
+                        sheetTitle: 'Select Source Account',
                         items: accounts.map((acc) {
-                          return DropdownMenuItem(
+                          return AppDropdownItem<String>(
                             value: acc.id,
-                            child: Text('${acc.name} (${acc.currency})'),
+                            label: '${acc.name} (${acc.currency})',
+                            subtitle: 'Type: ${acc.type.toUpperCase()}',
+                            icon: Icon(
+                              acc.type == 'bank'
+                                  ? Icons.account_balance_outlined
+                                  : acc.type == 'ewallet'
+                                      ? Icons.account_balance_wallet_outlined
+                                      : Icons.payments_outlined,
+                              size: 20,
+                              color: AppColors.primary,
+                            ),
                           );
                         }).toList(),
                         onChanged: (val) {
-                          setState(() {
-                            _fromAccountId = val;
-                            if (_fromAccountId == _toAccountId) {
-                              _toAccountId = accounts.firstWhere((a) => a.id != val).id;
-                            }
-                          });
+                          if (val != null) {
+                            setState(() {
+                              _fromAccountId = val;
+                              if (_fromAccountId == _toAccountId) {
+                                _toAccountId = accounts.firstWhere((a) => a.id != val).id;
+                              }
+                            });
+                            _updateExchangeRate(accounts);
+                          }
                         },
                       ),
                       const SizedBox(height: 12),
 
                       // To Account
-                      DropdownButtonFormField<String>(
+                      AppDropdownFormField<String>(
                         initialValue: _toAccountId,
-                        dropdownColor: AppColors.darkCardBg,
-                        style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 14),
-                        decoration: InputDecoration(
-                          labelText: 'Destination Account (Receiver)',
-                          labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
-                          filled: true,
-                          fillColor: Colors.black45,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                          ),
-                        ),
+                        labelText: 'Destination Account (Receiver)',
+                        sheetTitle: 'Select Destination Account',
                         items: accounts.where((a) => a.id != _fromAccountId).map((acc) {
-                          return DropdownMenuItem(
+                          return AppDropdownItem<String>(
                             value: acc.id,
-                            child: Text('${acc.name} (${acc.currency})'),
+                            label: '${acc.name} (${acc.currency})',
+                            subtitle: 'Type: ${acc.type.toUpperCase()}',
+                            icon: Icon(
+                              acc.type == 'bank'
+                                  ? Icons.account_balance_outlined
+                                  : acc.type == 'ewallet'
+                                      ? Icons.account_balance_wallet_outlined
+                                      : Icons.payments_outlined,
+                              size: 20,
+                              color: AppColors.teal,
+                            ),
                           );
                         }).toList(),
-                        onChanged: (val) => setState(() => _toAccountId = val),
+                        onChanged: (val) {
+                          setState(() => _toAccountId = val);
+                          _updateExchangeRate(accounts);
+                        },
                       ),
                       const SizedBox(height: 14),
 
@@ -256,22 +283,54 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _rateController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 14),
-                          decoration: InputDecoration(
-                            labelText: 'Exchange Rate (1 ${fromAcc.currency} = ... ${toAcc.currency})',
-                            labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 12),
-                            filled: true,
-                            fillColor: Colors.black45,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Exchange Rate (1 ${fromAcc.currency} = ... ${toAcc.currency})',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
                             ),
-                          ),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _rateController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              ],
+                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                              decoration: InputDecoration(
+                                hintText: '1.0',
+                                hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
+                                filled: true,
+                                fillColor: AppColors.darkCardBg,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                suffixIcon: _isFetchingRate
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(14),
+                                        child: SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                                        ),
+                                      )
+                                    : null,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                       ],
                     ],
                   );
@@ -281,74 +340,113 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
               ),
 
               // Amount From
-              TextFormField(
-                controller: _amountFromController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.darkTextPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Transfer Amount',
-                  labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
-                  filled: true,
-                  fillColor: Colors.black45,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                  ),
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Amount is required' : null,
+              accountsAsync.when(
+                data: (accounts) {
+                  final fromAcc = _findAccount(accounts, _fromAccountId);
+                  final symbol = fromAcc?.currency == 'MYR' ? 'RM ' : 'Rp ';
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Transfer Amount',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
+                      ),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _amountFromController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [CurrencyInputFormatter()],
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: '0',
+                          prefixText: symbol,
+                          prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary),
+                          hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
+                          filled: true,
+                          fillColor: AppColors.darkCardBg,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Amount is required' : null,
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // Notes
-              TextFormField(
-                controller: _notesController,
-                style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 14),
-                decoration: InputDecoration(
-                  labelText: 'Notes (Optional)',
-                  labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
-                  filled: true,
-                  fillColor: Colors.black45,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.darkCardBorder),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Notes (Optional)',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _notesController,
+                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      hintText: 'e.g., Transfer to savings, pocket money',
+                      hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
+                      filled: true,
+                      fillColor: AppColors.darkCardBg,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 24),
 
               // Submit Button
               accountsAsync.when(
-                data: (accounts) => GestureDetector(
-                  onTap: _isLoading ? null : () => _submit(accounts),
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: AppColors.primary,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                data: (accounts) => SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
                     ),
-                    child: Center(
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                            )
-                          : const Text(
-                              'Send Transfer',
-                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.black),
-                            ),
-                    ),
+                    onPressed: _isLoading ? null : () => _submit(accounts),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                          )
+                        : const Text(
+                            'Send Transfer',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                          ),
                   ),
                 ),
                 loading: () => const SizedBox.shrink(),

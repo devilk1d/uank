@@ -26,7 +26,8 @@ class ActivityScreen extends ConsumerWidget {
                     'Activity',
                     style: TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
                       color: AppColors.darkTextPrimary,
                     ),
                   ),

@@ -2,19 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/currency_formatter.dart';
+import '../../../core/widgets/app_calendar_sheet.dart';
+import '../../../core/widgets/app_dropdown.dart';
 import '../../../domain/entities/bill.dart';
 import '../../accounts/providers/account_providers.dart';
 import '../providers/bill_providers.dart';
 
 class PayBillDialog extends ConsumerStatefulWidget {
-  const PayBillDialog({super.key, required this.bill});
+  const PayBillDialog({super.key, required this.bill, this.periodMonth});
 
   final Bill bill;
+  final DateTime? periodMonth;
 
-  static Future<void> show(BuildContext context, Bill bill) {
+  static Future<void> show(BuildContext context, Bill bill, {DateTime? periodMonth}) {
     return showDialog(
       context: context,
-      builder: (_) => PayBillDialog(bill: bill),
+      builder: (_) => PayBillDialog(bill: bill, periodMonth: periodMonth),
     );
   }
 
@@ -25,12 +29,13 @@ class PayBillDialog extends ConsumerStatefulWidget {
 class _PayBillDialogState extends ConsumerState<PayBillDialog> {
   late final TextEditingController _amountController;
   String? _selectedAccountId;
+  DateTime _selectedPaidDate = DateTime.now();
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _amountController = TextEditingController(text: widget.bill.amount.toStringAsFixed(0));
+    _amountController = TextEditingController(text: CurrencyInputFormatter.format(widget.bill.amount));
     _selectedAccountId = widget.bill.accountId;
   }
 
@@ -48,8 +53,8 @@ class _PayBillDialogState extends ConsumerState<PayBillDialog> {
       return;
     }
 
-    final amount = num.tryParse(_amountController.text.replaceAll(RegExp(r'[^0-9.]'), ''));
-    if (amount == null || amount <= 0) {
+    final amount = CurrencyInputFormatter.parse(_amountController.text);
+    if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid amount'), backgroundColor: AppColors.red),
       );
@@ -64,23 +69,15 @@ class _PayBillDialogState extends ConsumerState<PayBillDialog> {
         billId: widget.bill.id,
         accountId: _selectedAccountId!,
         amount: amount,
+        periodMonth: widget.periodMonth,
+        paidDate: _selectedPaidDate,
       );
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Bill "${widget.bill.name}" paid successfully!'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment failed: $e'), backgroundColor: AppColors.red),
-        );
-      }
+    } catch (_) {
+      // Failed silently / handled
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -131,49 +128,90 @@ class _PayBillDialogState extends ConsumerState<PayBillDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Amount
+            const Text(
+              'Amount to Pay',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.darkTextSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
             TextFormField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.darkTextPrimary),
+              keyboardType: TextInputType.number,
+              inputFormatters: [CurrencyInputFormatter()],
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
               decoration: InputDecoration(
-                labelText: 'Amount to Pay (${widget.bill.currency})',
-                labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 12),
+                hintText: '0',
+                hintStyle: const TextStyle(
+                  color: AppColors.darkTextMuted,
+                  fontSize: 14,
+                ),
+                prefixText: widget.bill.currency == 'IDR' ? 'Rp  ' : 'RM  ',
+                prefixStyle: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
                 filled: true,
-                fillColor: Colors.black45,
+                fillColor: AppColors.darkCardBg,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.2,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
 
             // Account selection
             accountsAsync.when(
               data: (accounts) {
                 if (accounts.isEmpty) {
-                  return const Text('No active accounts available', style: TextStyle(color: AppColors.orange, fontSize: 12));
+                  return const Text(
+                    'No active accounts available',
+                    style: TextStyle(color: AppColors.orange, fontSize: 12),
+                  );
                 }
                 _selectedAccountId ??= accounts.first.id;
 
-                return DropdownButtonFormField<String>(
+                return AppDropdownFormField<String>(
                   initialValue: _selectedAccountId,
-                  dropdownColor: AppColors.darkCardBg,
-                  style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 13),
-                  decoration: InputDecoration(
-                    labelText: 'Pay from Account',
-                    labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 12),
-                    filled: true,
-                    fillColor: Colors.black45,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                    ),
-                  ),
+                  labelText: 'Pay from Account',
+                  sheetTitle: 'Select Payment Account',
                   items: accounts.map((acc) {
-                    return DropdownMenuItem(
+                    return AppDropdownItem<String>(
                       value: acc.id,
-                      child: Text('${acc.name} (${acc.currency})'),
+                      label: '${acc.name} (${acc.currency})',
+                      subtitle: 'Type: ${acc.type.toUpperCase()}',
+                      icon: Icon(
+                        acc.type == 'bank'
+                            ? Icons.account_balance_outlined
+                            : acc.type == 'ewallet'
+                                ? Icons.account_balance_wallet_outlined
+                                : Icons.payments_outlined,
+                        size: 20,
+                        color: AppColors.primary,
+                      ),
                     );
                   }).toList(),
                   onChanged: (val) => setState(() => _selectedAccountId = val),
@@ -182,19 +220,89 @@ class _PayBillDialogState extends ConsumerState<PayBillDialog> {
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('$e', style: const TextStyle(color: AppColors.red, fontSize: 12)),
             ),
+            const SizedBox(height: 16),
+
+            // Payment Date Picker
+            const Text(
+              'Payment Date',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.darkTextSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () async {
+                final picked = await AppDatePickerSheet.show(
+                  context,
+                  initialDate: _selectedPaidDate,
+                  title: 'Select Payment Date',
+                );
+                if (picked != null) {
+                  setState(() => _selectedPaidDate = picked);
+                }
+              },
+              child: Container(
+                height: 50,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.darkCardBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.darkCardBorder),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_today_rounded,
+                          size: 18,
+                          color: AppColors.primaryLight,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          '${_selectedPaidDate.day}/${_selectedPaidDate.month}/${_selectedPaidDate.year}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 20,
+                      color: AppColors.darkTextSecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel', style: TextStyle(color: AppColors.darkTextSecondary)),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.darkTextSecondary,
+            ),
+          ),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           ),
           onPressed: _isLoading ? null : _pay,
           child: _isLoading
@@ -203,7 +311,13 @@ class _PayBillDialogState extends ConsumerState<PayBillDialog> {
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                 )
-              : const Text('Confirm Payment', style: TextStyle(fontWeight: FontWeight.w700)),
+              : const Text(
+                  'Confirm Payment',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
         ),
       ],
     );

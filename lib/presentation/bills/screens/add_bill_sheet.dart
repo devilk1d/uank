@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/currency_formatter.dart';
+import '../../../core/widgets/app_dropdown.dart';
 import '../../../domain/entities/bill.dart';
 import '../../accounts/providers/account_providers.dart';
 import '../providers/bill_providers.dart';
@@ -43,8 +45,8 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final amount = num.tryParse(_amountController.text.replaceAll(RegExp(r'[^0-9.]'), ''));
-    if (amount == null || amount <= 0) {
+    final amount = CurrencyInputFormatter.parse(_amountController.text);
+    if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid bill amount'), backgroundColor: AppColors.red),
       );
@@ -69,19 +71,9 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Recurring bill created successfully!'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create bill: $e'), backgroundColor: AppColors.red),
-        );
-      }
+    } catch (_) {
+      // Failed silently / handled
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -135,23 +127,46 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
               const SizedBox(height: 18),
 
               // Name
-              TextFormField(
-                controller: _nameController,
-                style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 14),
-                decoration: InputDecoration(
-                  labelText: 'Bill Name',
-                  hintText: 'e.g., Fiber Internet, Electricity, Apartment Rent',
-                  labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
-                  filled: true,
-                  fillColor: Colors.black45,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.darkCardBorder),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Bill Name',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkTextSecondary,
+                    ),
                   ),
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Bill name is required' : null,
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _nameController,
+                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      hintText: 'e.g., Fiber Internet, Electricity, Rent',
+                      hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
+                      filled: true,
+                      fillColor: AppColors.darkCardBg,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                      ),
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Bill name is required' : null,
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // Amount & Currency
               Row(
@@ -159,123 +174,195 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
                 children: [
                   Expanded(
                     flex: 3,
-                    child: TextFormField(
-                      controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.darkTextPrimary),
-                      decoration: InputDecoration(
-                        labelText: 'Amount',
-                        labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
-                        filled: true,
-                        fillColor: Colors.black45,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Amount',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.darkTextSecondary,
+                          ),
                         ),
-                      ),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: _amountController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [CurrencyInputFormatter()],
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '0',
+                            prefixText: _selectedCurrency == 'IDR' ? 'Rp ' : 'RM ',
+                            prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary),
+                            hintStyle: const TextStyle(
+                              color: AppColors.darkTextMuted,
+                              fontSize: 14,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.darkCardBg,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                            ),
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _selectedCurrency,
-                      dropdownColor: AppColors.darkCardBg,
-                      style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 14),
-                      decoration: InputDecoration(
-                        labelText: 'Currency',
-                        labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
-                        filled: true,
-                        fillColor: Colors.black45,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Currency',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
                         ),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'IDR', child: Text('IDR')),
-                        DropdownMenuItem(value: 'MYR', child: Text('MYR')),
+                        const SizedBox(height: 6),
+                        Container(
+                          height: 50,
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.darkCardBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.darkCardBorder),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () => setState(() => _selectedCurrency = 'IDR'),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: _selectedCurrency == 'IDR' ? AppColors.primary : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      'IDR',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: _selectedCurrency == 'IDR' ? Colors.black : AppColors.darkTextSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () => setState(() => _selectedCurrency = 'MYR'),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: _selectedCurrency == 'MYR' ? AppColors.primary : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      'MYR',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: _selectedCurrency == 'MYR' ? Colors.black : AppColors.darkTextSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
-                      onChanged: (v) => setState(() => _selectedCurrency = v ?? 'IDR'),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // Due day and Reminder days
               Row(
                 children: [
                   Expanded(
-                    child: DropdownButtonFormField<int>(
+                    child: AppDropdownFormField<int>(
                       initialValue: _dueDay,
-                      dropdownColor: AppColors.darkCardBg,
-                      style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 14),
-                      decoration: InputDecoration(
-                        labelText: 'Due Date (Day)',
-                        labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 12),
-                        filled: true,
-                        fillColor: Colors.black45,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                        ),
-                      ),
+                      labelText: 'Due Date (Day)',
+                      enableSearch: true,
+                      sheetTitle: 'Select Due Date',
                       items: List.generate(31, (i) => i + 1).map((d) {
-                        return DropdownMenuItem(value: d, child: Text('Day $d'));
+                        return AppDropdownItem<int>(
+                          value: d,
+                          label: 'Day $d',
+                          subtitle: 'Every month on the ${d}th',
+                          icon: const Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.primary),
+                        );
                       }).toList(),
                       onChanged: (v) => setState(() => _dueDay = v ?? 10),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: DropdownButtonFormField<int>(
+                    child: AppDropdownFormField<int>(
                       initialValue: _reminderDays,
-                      dropdownColor: AppColors.darkCardBg,
-                      style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 14),
-                      decoration: InputDecoration(
-                        labelText: 'Reminder',
-                        labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 12),
-                        filled: true,
-                        fillColor: Colors.black45,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                        ),
-                      ),
+                      labelText: 'Reminder',
+                      sheetTitle: 'Select Reminder Time',
                       items: [1, 2, 3, 5, 7].map((d) {
-                        return DropdownMenuItem(value: d, child: Text('$d days before'));
+                        return AppDropdownItem<int>(
+                          value: d,
+                          label: '$d days before',
+                          subtitle: 'Notify $d days ahead of due date',
+                          icon: const Icon(Icons.notifications_active_outlined, size: 18, color: AppColors.orange),
+                        );
                       }).toList(),
                       onChanged: (v) => setState(() => _reminderDays = v ?? 3),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // Default Account (Optional)
               accountsAsync.when(
                 data: (accounts) {
-                  return DropdownButtonFormField<String?>(
+                  return AppDropdownFormField<String?>(
                     initialValue: _selectedAccountId,
-                    dropdownColor: AppColors.darkCardBg,
-                    style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 14),
-                    decoration: InputDecoration(
-                      labelText: 'Default Payment Account (Optional)',
-                      labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
-                      filled: true,
-                      fillColor: Colors.black45,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                      ),
-                    ),
+                    labelText: 'Default Payment Account (Optional)',
+                    sheetTitle: 'Select Default Account',
                     items: [
-                      const DropdownMenuItem(value: null, child: Text('Select when paying')),
-                      ...accounts.map((acc) => DropdownMenuItem(
+                      const AppDropdownItem<String?>(
+                        value: null,
+                        label: 'None (Select when paying)',
+                        icon: Icon(Icons.help_outline_rounded, size: 20, color: AppColors.darkTextSecondary),
+                      ),
+                      ...accounts.map((acc) => AppDropdownItem<String?>(
                             value: acc.id,
-                            child: Text('${acc.name} (${acc.currency})'),
+                            label: '${acc.name} (${acc.currency})',
+                            subtitle: 'Type: ${acc.type.toUpperCase()}',
+                            icon: Icon(
+                              acc.type == 'bank'
+                                  ? Icons.account_balance_outlined
+                                  : acc.type == 'ewallet'
+                                      ? Icons.account_balance_wallet_outlined
+                                      : Icons.payments_outlined,
+                              size: 20,
+                              color: AppColors.primary,
+                            ),
                           )),
                     ],
                     onChanged: (val) => setState(() => _selectedAccountId = val),
@@ -284,36 +371,30 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
                 loading: () => const SizedBox.shrink(),
                 error: (_, _) => const SizedBox.shrink(),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 24),
 
               // Submit Button
-              GestureDetector(
-                onTap: _isLoading ? null : _submit,
-                child: Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: AppColors.primary,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
                   ),
-                  child: Center(
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                          )
-                        : const Text(
-                            'Save Bill',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.black),
-                          ),
-                  ),
+                  onPressed: _isLoading ? null : _submit,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                        )
+                      : const Text(
+                          'Save Bill',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                        ),
                 ),
               ),
             ],

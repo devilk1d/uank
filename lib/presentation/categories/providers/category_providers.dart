@@ -18,8 +18,19 @@ Future<List<Category>> categoriesByType(Ref ref, String type) {
   return repo.getByType(type);
 }
 
-Future<void> createCategory(WidgetRef ref, Category category) async {
+Future<Category> createCategory(WidgetRef ref, Category category) async {
   final repo = ref.read(categoryRepositoryProvider);
-  await repo.create(category);
+  final created = await repo.create(category);
   ref.invalidate(categoriesProvider);
+  ref.invalidate(categoriesByTypeProvider('expense'));
+  ref.invalidate(categoriesByTypeProvider('income'));
+  return created;
+}
+
+Future<void> deleteCategory(WidgetRef ref, String id, {String? type}) async {
+  final repo = ref.read(categoryRepositoryProvider);
+  await repo.delete(id);
+  ref.invalidate(categoriesProvider);
+  ref.invalidate(categoriesByTypeProvider('expense'));
+  ref.invalidate(categoriesByTypeProvider('income'));
 }

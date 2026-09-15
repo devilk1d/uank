@@ -8,9 +8,15 @@ import '../../../domain/entities/category.dart';
 import '../providers/category_providers.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
-  const CategoriesScreen({super.key, this.pickerMode = false, this.onSelect});
+  const CategoriesScreen({
+    super.key,
+    this.pickerMode = false,
+    this.initialType = 'expense',
+    this.onSelect,
+  });
 
   final bool pickerMode;
+  final String initialType;
   final ValueChanged<Category>? onSelect;
 
   @override
@@ -18,7 +24,13 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 }
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
-  int _selectedTabIndex = 0; // 0: expense, 1: income
+  late int _selectedTabIndex; // 0: expense, 1: income
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTabIndex = widget.initialType == 'income' ? 1 : 0;
+  }
 
   final _iconOptions = const [
     {'name': 'restaurant', 'icon': Icons.restaurant_rounded, 'label': 'Food'},
@@ -55,24 +67,59 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text(
+                'Category Name',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.darkTextSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: nameController,
-                style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 14),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
                 decoration: InputDecoration(
-                  labelText: 'Category Name',
-                  labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
+                  hintText: 'e.g. Groceries, Investment',
+                  hintStyle: const TextStyle(
+                    color: AppColors.darkTextMuted,
+                    fontSize: 14,
+                  ),
                   filled: true,
-                  fillColor: Colors.black45,
+                  fillColor: AppColors.darkCardBg,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.2,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               const Text(
                 'Select Icon',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.darkTextSecondary,
+                ),
               ),
               const SizedBox(height: 10),
               SizedBox(
@@ -93,7 +140,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isSel ? AppColors.primary.withValues(alpha: 0.25) : Colors.black45,
+                          color: isSel ? AppColors.primary.withValues(alpha: 0.25) : AppColors.darkCardBg,
                           border: Border.all(
                             color: isSel ? AppColors.primary : AppColors.darkCardBorder,
                             width: isSel ? 1.5 : 1,
@@ -114,13 +161,21 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.darkTextSecondary)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.darkTextSecondary,
+                ),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               ),
               onPressed: () async {
                 final name = nameController.text.trim();
@@ -133,10 +188,20 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   icon: selectedIcon,
                 );
 
-                await createCategory(ref, newCat);
+                final created = await createCategory(ref, newCat);
                 if (ctx.mounted) Navigator.pop(ctx);
+                if (widget.pickerMode && widget.onSelect != null && mounted) {
+                  widget.onSelect!(created);
+                  Navigator.pop(context);
+                }
               },
-              child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: const Text(
+                'Save',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ],
         ),

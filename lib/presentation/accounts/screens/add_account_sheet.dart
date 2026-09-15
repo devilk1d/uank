@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/entities/account.dart';
 import '../providers/account_providers.dart';
 
@@ -51,29 +52,15 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
         isActive: true,
       );
 
-      final rawBalance = _initialBalanceController.text.replaceAll(RegExp(r'[^0-9.]'), '');
-      final initialBalance = num.tryParse(rawBalance) ?? 0;
+      final initialBalance = CurrencyInputFormatter.parse(_initialBalanceController.text);
 
       await createAccount(ref, newAccount, initialBalance: initialBalance);
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Account "${newAccount.name}" created successfully!'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to create account: $e'),
-            backgroundColor: AppColors.red,
-          ),
-        );
-      }
+    } catch (_) {
+      // Failed silently / handled
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -131,23 +118,48 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             const SizedBox(height: 20),
 
             // Account Name Field
+            const Text(
+              'Account Name',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.darkTextSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
             TextFormField(
               controller: _nameController,
-              style: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 14),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
               decoration: InputDecoration(
-                labelText: 'Account Name',
-                hintText: 'e.g., Chase Bank, Maybank, PayPal, Cash Wallet',
-                labelStyle: const TextStyle(color: AppColors.darkTextSecondary),
-                hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 12),
+                hintText: 'e.g. Chase Bank, Maybank, Cash Wallet',
+                hintStyle: const TextStyle(
+                  color: AppColors.darkTextMuted,
+                  fontSize: 14,
+                ),
                 filled: true,
-                fillColor: Colors.black45,
+                fillColor: AppColors.darkCardBg,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: const BorderSide(color: AppColors.darkCardBorder),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.2,
+                  ),
                 ),
               ),
               validator: (v) =>
@@ -158,7 +170,11 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             // Account Type Selector
             const Text(
               'Account Type',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.darkTextSecondary,
+              ),
             ),
             const SizedBox(height: 8),
             Row(
@@ -187,60 +203,107 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             ),
             const SizedBox(height: 16),
 
-            // Currency Selector
-            const Text(
-              'Currency',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
-            ),
-            const SizedBox(height: 8),
+            // Initial Balance & Currency Row
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _CurrencyChip(
-                  currency: 'IDR',
-                  label: 'Rupiah (IDR)',
-                  isSelected: _selectedCurrency == 'IDR',
-                  onTap: () => setState(() => _selectedCurrency = 'IDR'),
+                // Initial Balance Field (flex: 3)
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Initial Balance',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.darkTextSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _initialBalanceController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [CurrencyInputFormatter()],
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: '0',
+                          hintStyle: const TextStyle(
+                            color: AppColors.darkTextMuted,
+                            fontSize: 14,
+                          ),
+                          prefixText: _selectedCurrency == 'IDR' ? 'Rp  ' : 'RM  ',
+                          prefixStyle: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.darkCardBg,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(
+                              color: AppColors.primary,
+                              width: 1.2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 8),
-                _CurrencyChip(
-                  currency: 'MYR',
-                  label: 'Ringgit (MYR)',
-                  isSelected: _selectedCurrency == 'MYR',
-                  onTap: () => setState(() => _selectedCurrency = 'MYR'),
+                const SizedBox(width: 12),
+                // Currency Switcher (flex: 2)
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Currency',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.darkTextSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 50,
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.darkCardBg,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.darkCardBorder),
+                        ),
+                        child: Row(
+                          children: [
+                            _buildCurrencyPill('IDR'),
+                            _buildCurrencyPill('MYR'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
-            ),
-            const SizedBox(height: 16),
-
-            // Initial Balance Field
-            TextFormField(
-              controller: _initialBalanceController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.darkTextPrimary,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Initial Balance (Starting Nominal)',
-                hintText: '0',
-                prefixText: _selectedCurrency == 'IDR' ? 'Rp  ' : 'RM  ',
-                prefixStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryLight),
-                labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
-                hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
-                helperText: 'Enter starting balance for this account (optional)',
-                helperStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 11),
-                filled: true,
-                fillColor: Colors.black45,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                ),
-              ),
             ),
             const SizedBox(height: 24),
 
@@ -269,12 +332,41 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                         )
                       : const Text(
                           'Save Account',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.black),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black,
+                          ),
                         ),
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCurrencyPill(String code) {
+    final isSelected = _selectedCurrency == code;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedCurrency = code),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            code,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              color: isSelected ? Colors.black : AppColors.darkTextSecondary,
+            ),
+          ),
         ),
       ),
     );
@@ -302,8 +394,8 @@ class _TypeChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : Colors.black45,
-            borderRadius: BorderRadius.circular(12),
+            color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.darkCardBg,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isSelected ? AppColors.primary : AppColors.darkCardBorder,
               width: isSelected ? 1.5 : 1,
@@ -316,56 +408,12 @@ class _TypeChip extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected ? AppColors.darkTextPrimary : AppColors.darkTextSecondary,
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CurrencyChip extends StatelessWidget {
-  const _CurrencyChip({
-    required this.currency,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String currency;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : Colors.black45,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.darkCardBorder,
-              width: isSelected ? 1.5 : 1,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? AppColors.darkTextPrimary : AppColors.darkTextSecondary,
-              ),
-            ),
           ),
         ),
       ),
