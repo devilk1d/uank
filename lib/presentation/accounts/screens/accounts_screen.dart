@@ -15,7 +15,6 @@ import '../../../domain/entities/transaction.dart';
 import '../../categories/providers/category_providers.dart';
 import '../../repository_providers.dart';
 import '../../saving_goals/providers/saving_goal_providers.dart';
-import '../../saving_goals/screens/add_saving_goal_sheet.dart';
 import '../../saving_goals/utils/saving_goal_ui_helpers.dart';
 import '../../saving_goals/widgets/deposit_saving_goal_dialog.dart';
 import '../../transactions/providers/transaction_providers.dart';
@@ -23,6 +22,7 @@ import '../../transactions/screens/add_transaction_sheet.dart';
 import '../providers/account_providers.dart';
 import '../widgets/account_card_carousel.dart';
 import 'add_account_sheet.dart';
+import '../../shell/main_shell.dart';
 
 class _RealAnalyticsData {
   final num totalAmount;
@@ -434,16 +434,12 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
     final isPositive = netCashFlow >= 0;
 
     final incomeStr = currencyCode == 'MYR'
-        ? '+RM ${totalIncome % 1 == 0 ? totalIncome.toStringAsFixed(0) : totalIncome.toStringAsFixed(2)}'
+        ? '+RM ${_formatNumber(totalIncome)}'
         : '+Rp ${_formatNumber(totalIncome)}';
 
     final expenseStr = currencyCode == 'MYR'
-        ? '-RM ${totalExpense % 1 == 0 ? totalExpense.toStringAsFixed(0) : totalExpense.toStringAsFixed(2)}'
+        ? '-RM ${_formatNumber(totalExpense)}'
         : '-Rp ${_formatNumber(totalExpense)}';
-
-    final netStr = currencyCode == 'MYR'
-        ? '${isPositive ? "+" : "-"}RM ${netCashFlow.abs() % 1 == 0 ? netCashFlow.abs().toStringAsFixed(0) : netCashFlow.abs().toStringAsFixed(2)}'
-        : '${isPositive ? "+" : "-"}Rp ${_formatNumber(netCashFlow.abs())}';
 
     final savingsRate = totalIncome > 0 ? ((netCashFlow / totalIncome) * 100).clamp(-100.0, 100.0) : 0.0;
     final expenseRatio = totalIncome > 0 ? (totalExpense / totalIncome).clamp(0.0, 1.0) : 0.0;
@@ -519,13 +515,30 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
-                      child: Text(
-                        netStr,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: isPositive ? context.accentLinkColor : AppColors.red,
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: isPositive ? '+' : '-',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                                color: isPositive ? AppColors.green : AppColors.red,
+                              ),
+                            ),
+                            TextSpan(
+                              text: currencyCode == 'MYR'
+                                  ? 'RM ${_formatNumber(netCashFlow.abs())}'
+                                  : 'Rp ${_formatNumber(netCashFlow.abs())}',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                                color: context.textPrimary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -709,14 +722,25 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                 ],
               ),
               GestureDetector(
-                onTap: () => AddSavingGoalSheet.show(context),
-                child: Text(
-                  '+ New Goal',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: context.accentLinkColor,
-                  ),
+                onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'View all',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 12,
+                      color: context.textSecondary,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -873,7 +897,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   Widget _buildSpendingOverviewCard(_RealAnalyticsData data) {
     final hasExpenses = data.totalAmount > 0 && data.donutSegments.isNotEmpty;
     final formattedTotal = data.currencyCode == 'MYR'
-        ? 'RM ${data.totalAmount % 1 == 0 ? data.totalAmount.toStringAsFixed(0) : data.totalAmount.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(data.totalAmount)}'
         : 'Rp ${_formatNumber(data.totalAmount)}';
 
     return GlassCard(
@@ -1077,11 +1101,11 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
 
   Widget _buildSpendingTrendCard(_RealAnalyticsData data) {
     final dailyAvgFormatted = data.currencyCode == 'MYR'
-        ? 'RM ${data.dailyAverage % 1 == 0 ? data.dailyAverage.toStringAsFixed(0) : data.dailyAverage.toStringAsFixed(2)} / day'
+        ? 'RM ${_formatNumber(data.dailyAverage)} / day'
         : 'Rp ${_formatNumber(data.dailyAverage)} / day';
 
     final peakFormatted = data.currencyCode == 'MYR'
-        ? 'RM ${data.peakAmount % 1 == 0 ? data.peakAmount.toStringAsFixed(0) : data.peakAmount.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(data.peakAmount)}'
         : 'Rp ${_formatNumber(data.peakAmount)}';
 
     return GlassCard(
@@ -1195,7 +1219,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   Widget _buildIncomeOverviewCard(_RealAnalyticsData data) {
     final hasIncome = data.totalAmount > 0 && data.donutSegments.isNotEmpty;
     final formattedTotal = data.currencyCode == 'MYR'
-        ? 'RM ${data.totalAmount % 1 == 0 ? data.totalAmount.toStringAsFixed(0) : data.totalAmount.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(data.totalAmount)}'
         : 'Rp ${_formatNumber(data.totalAmount)}';
 
     return GlassCard(
@@ -1226,11 +1250,11 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
           // Real Big Bold Total & Real Growth Metric
           Text(
             formattedTotal,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
-              color: Color(0xFF10B981), // Emerald green
+              color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -1399,11 +1423,11 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
 
   Widget _buildIncomeTrendCard(_RealAnalyticsData data) {
     final dailyAvgFormatted = data.currencyCode == 'MYR'
-        ? 'RM ${data.dailyAverage % 1 == 0 ? data.dailyAverage.toStringAsFixed(0) : data.dailyAverage.toStringAsFixed(2)} / day'
+        ? 'RM ${_formatNumber(data.dailyAverage)} / day'
         : 'Rp ${_formatNumber(data.dailyAverage)} / day';
 
     final peakFormatted = data.currencyCode == 'MYR'
-        ? 'RM ${data.peakAmount % 1 == 0 ? data.peakAmount.toStringAsFixed(0) : data.peakAmount.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(data.peakAmount)}'
         : 'Rp ${_formatNumber(data.peakAmount)}';
 
     return GlassCard(
@@ -1449,10 +1473,10 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                     const SizedBox(height: 3),
                     Text(
                       dailyAvgFormatted,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF10B981),
+                        color: context.textPrimary,
                       ),
                     ),
                   ],
@@ -1469,7 +1493,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Peak Inflow Period',
+                      'Peak Period',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -1487,7 +1511,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF14B8A6),
+                              color: Color(0xFF10B981),
                             ),
                           ),
                         ),
@@ -1696,7 +1720,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
               : '${pctVal.toStringAsFixed(0)}%';
 
       final formattedAmount = currency == 'MYR'
-          ? 'RM ${entry.value % 1 == 0 ? entry.value.toStringAsFixed(0) : entry.value.toStringAsFixed(2)}'
+          ? 'RM ${_formatNumber(entry.value)}'
           : 'Rp ${_formatNumber(entry.value)}';
 
       Color segColor;
@@ -1752,7 +1776,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
         : '';
 
     final highlightTrendLabel = currency == 'MYR'
-        ? 'RM ${maxVal % 1 == 0 ? maxVal.toStringAsFixed(0) : maxVal.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(maxVal)}'
         : 'Rp ${_formatNumber(maxVal)}';
 
     return _RealAnalyticsData(

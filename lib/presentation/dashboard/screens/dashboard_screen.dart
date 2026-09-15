@@ -794,14 +794,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: context.accentLinkColor,
+                        color: context.textSecondary,
                       ),
                     ),
                     const SizedBox(width: 4),
                     Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 12,
-                      color: context.accentLinkColor,
+                      color: context.textSecondary,
                     ),
                   ],
                 ),

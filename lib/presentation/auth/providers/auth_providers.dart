@@ -74,6 +74,10 @@ class UserProfile extends _$UserProfile {
 
   Future<void> updateAvatar(String? avatarUrl) async {
     final repo = ref.read(authRepositoryProvider);
+    final previousAvatar = state?.avatarUrl;
+    if (previousAvatar != null && previousAvatar.contains('/avatars/')) {
+      await repo.deleteAvatarFile(previousAvatar);
+    }
     await repo.updateProfile(avatarUrl: avatarUrl ?? '');
     ref.invalidateSelf();
   }
@@ -86,12 +90,20 @@ class UserProfile extends _$UserProfile {
     final user = repo.currentUser;
     if (user == null) throw Exception('No user logged in');
 
+    final previousAvatar = state?.avatarUrl;
+
     final url = await repo.uploadAvatar(
       userId: user.id,
       imageBytes: bytes,
       fileExtension: extension,
     );
     await repo.updateProfile(avatarUrl: url);
+
+    // Delete old avatar from storage if existed to avoid storage clutter
+    if (previousAvatar != null && previousAvatar.contains('/avatars/') && previousAvatar != url) {
+      await repo.deleteAvatarFile(previousAvatar);
+    }
+
     ref.invalidateSelf();
     return url;
   }

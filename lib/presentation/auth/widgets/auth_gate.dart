@@ -13,37 +13,50 @@ class AuthGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authStateAsync = ref.watch(authStateProvider);
 
-    return authStateAsync.when(
-      data: (authState) {
-        final session = authState.session;
-        if (session != null && !session.isExpired) {
-          return const MainShell();
-        } else if (session != null && session.isExpired) {
-          // Token expired, attempt refresh
-          ref.read(authRepositoryProvider).refreshSessionIfNeeded();
-          return const Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Color(0xFF10B981),
-              ),
-            ),
-          );
-        } else {
-          return const LoginScreen();
-        }
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 280),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: child,
+        );
       },
-      loading: () => const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Color(0xFF10B981),
+      child: authStateAsync.when(
+        data: (authState) {
+          final session = authState.session;
+          if (session != null && !session.isExpired) {
+            return const MainShell(key: ValueKey('main_shell'));
+          } else if (session != null && session.isExpired) {
+            // Token expired, attempt refresh
+            ref.read(authRepositoryProvider).refreshSessionIfNeeded();
+            return const Scaffold(
+              key: ValueKey('auth_refreshing'),
+              backgroundColor: Colors.black,
+              body: Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFF10B981),
+                ),
+              ),
+            );
+          } else {
+            return const LoginScreen(key: ValueKey('login_screen'));
+          }
+        },
+        loading: () => const Scaffold(
+          key: ValueKey('auth_loading'),
+          backgroundColor: Colors.black,
+          body: Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Color(0xFF10B981),
+            ),
           ),
         ),
+        error: (_, _) => const LoginScreen(key: ValueKey('login_screen_error')),
       ),
-      error: (_, _) => const LoginScreen(),
     );
   }
 }

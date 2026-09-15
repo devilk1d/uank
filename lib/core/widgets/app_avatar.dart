@@ -47,18 +47,7 @@ class AppAvatar extends StatelessWidget {
         color: (avatarUrl != null && avatarUrl!.isNotEmpty && !avatarUrl!.startsWith('emoji:'))
             ? context.cardBg
             : null,
-        border: border ??
-            Border.all(
-              color: AppColors.primary.withValues(alpha: 0.5),
-              width: size > 50 ? 2.0 : 1.5,
-            ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.25),
-            blurRadius: size > 50 ? 14 : 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: border,
       ),
       child: ClipOval(
         child: Center(child: avatarContent),

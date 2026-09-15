@@ -8,7 +8,6 @@
 // lain (accounts, transactions, dst) akan mengembalikan hasil kosong,
 // bukan error — karena RLS diam-diam menyaring "tidak ada baris milikmu".
 
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -53,8 +52,13 @@ class AuthRepository {
   Future<void> signUp({
     required String email,
     required String password,
+    Map<String, dynamic>? data,
   }) async {
-    await supabase.auth.signUp(email: email, password: password);
+    await supabase.auth.signUp(
+      email: email,
+      password: password,
+      data: data,
+    );
   }
 
   Future<void> signIn({
@@ -79,22 +83,34 @@ class AuthRepository {
     required Uint8List imageBytes,
     required String fileExtension,
   }) async {
-    final fileName = '$userId/${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+    final cleanExt = (fileExtension.toLowerCase() == 'jpg' || fileExtension.toLowerCase() == 'jpeg')
+        ? 'jpeg'
+        : fileExtension.toLowerCase();
+    final fileName = '$userId/${DateTime.now().millisecondsSinceEpoch}.$cleanExt';
+
+    await supabase.storage.from('avatars').uploadBinary(
+      fileName,
+      imageBytes,
+      fileOptions: FileOptions(
+        contentType: 'image/$cleanExt',
+        upsert: true,
+      ),
+    );
+    final publicUrl = supabase.storage.from('avatars').getPublicUrl(fileName);
+    return publicUrl;
+  }
+
+  Future<void> deleteAvatarFile(String avatarUrl) async {
     try {
-      await supabase.storage.from('avatars').uploadBinary(
-        fileName,
-        imageBytes,
-        fileOptions: FileOptions(
-          contentType: 'image/$fileExtension',
-          upsert: true,
-        ),
-      );
-      final publicUrl = supabase.storage.from('avatars').getPublicUrl(fileName);
-      return publicUrl;
+      const marker = '/storage/v1/object/public/avatars/';
+      if (avatarUrl.contains(marker)) {
+        final path = avatarUrl.substring(avatarUrl.indexOf(marker) + marker.length);
+        if (path.isNotEmpty) {
+          await supabase.storage.from('avatars').remove([Uri.decodeComponent(path)]);
+        }
+      }
     } catch (_) {
-      // Fallback if storage bucket is not configured: save as base64 data URI
-      final base64Str = base64Encode(imageBytes);
-      return 'data:image/$fileExtension;base64,$base64Str';
+      // Best effort cleanup
     }
   }
 

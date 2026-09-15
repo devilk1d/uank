@@ -134,16 +134,15 @@ class _DigitalWalletCard extends StatelessWidget {
   final VoidCallback onToggleActive;
 
   String _formatAmount(num val, String currency) {
-    if (currency == 'MYR') {
-      return 'RM ${val % 1 == 0 ? val.toStringAsFixed(0) : val.toStringAsFixed(2)}';
-    }
-    final s = val.toStringAsFixed(0);
+    final s = val.abs().toStringAsFixed(0);
     final buffer = StringBuffer();
     for (int i = 0; i < s.length; i++) {
       if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
       buffer.write(s[i]);
     }
-    return 'Rp ${buffer.toString()}';
+    final prefix = currency == 'MYR' ? 'RM' : 'Rp';
+    final sign = val < 0 ? '-' : '';
+    return '$sign$prefix ${buffer.toString()}';
   }
 
   @override

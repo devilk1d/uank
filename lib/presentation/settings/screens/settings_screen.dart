@@ -215,6 +215,9 @@ class SettingsScreen extends ConsumerWidget {
                         );
 
                         if (confirm == true) {
+                          if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+                          }
                           await authRepo.signOut();
                         }
                       },
@@ -431,38 +434,8 @@ class SettingsScreen extends ConsumerWidget {
                                     );
 
                                     if (ctx.mounted) Navigator.pop(ctx);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: const Text('✨ Profile picture updated!'),
-                                          behavior: SnackBarBehavior.floating,
-                                          backgroundColor: cardBg,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            side: BorderSide(color: cardBorder),
-                                          ),
-                                        ),
-                                      );
-                                    }
                                   } catch (e) {
                                     setSheetState(() => isUploading = false);
-                                    if (ctx.mounted) {
-                                      final errStr = e.toString();
-                                      final isMissingPlugin = errStr.contains('MissingPluginException') ||
-                                          errStr.contains('channel-error') ||
-                                          errStr.contains('ImagePickerApi') ||
-                                          errStr.contains('Unable to establish connection');
-                                      ScaffoldMessenger.of(ctx).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            isMissingPlugin
-                                                ? 'Aplikasi perlu di-restart penuh (Stop lalu Run/flutter run) agar native picker aktif.'
-                                                : 'Error: $e',
-                                          ),
-                                          backgroundColor: AppColors.red,
-                                        ),
-                                      );
-                                    }
                                   }
                                 },
                           child: Container(
@@ -515,38 +488,8 @@ class SettingsScreen extends ConsumerWidget {
                                     );
 
                                     if (ctx.mounted) Navigator.pop(ctx);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: const Text('✨ Profile picture updated!'),
-                                          behavior: SnackBarBehavior.floating,
-                                          backgroundColor: cardBg,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            side: BorderSide(color: cardBorder),
-                                          ),
-                                        ),
-                                      );
-                                    }
                                   } catch (e) {
                                     setSheetState(() => isUploading = false);
-                                    if (ctx.mounted) {
-                                      final errStr = e.toString();
-                                      final isMissingPlugin = errStr.contains('MissingPluginException') ||
-                                          errStr.contains('channel-error') ||
-                                          errStr.contains('ImagePickerApi') ||
-                                          errStr.contains('Unable to establish connection');
-                                      ScaffoldMessenger.of(ctx).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            isMissingPlugin
-                                                ? 'Aplikasi perlu di-restart penuh (Stop lalu Run/flutter run) agar native picker aktif.'
-                                                : 'Error: $e',
-                                          ),
-                                          backgroundColor: AppColors.red,
-                                        ),
-                                      );
-                                    }
                                   }
                                 },
                           child: Container(
@@ -597,19 +540,6 @@ class SettingsScreen extends ConsumerWidget {
                           HapticFeedback.lightImpact();
                           await ref.read(userProfileProvider.notifier).updateAvatar(null);
                           if (ctx.mounted) Navigator.pop(ctx);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('Profile picture removed'),
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: cardBg,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  side: BorderSide(color: cardBorder),
-                                ),
-                              ),
-                            );
-                          }
                         },
                       ),
                     ),
@@ -735,29 +665,8 @@ class SettingsScreen extends ConsumerWidget {
                               try {
                                 await ref.read(userProfileProvider.notifier).updateName(name);
                                 if (ctx.mounted) Navigator.pop(ctx);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('✨ Profile name updated successfully!', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
-                                      behavior: SnackBarBehavior.floating,
-                                      backgroundColor: cardBg,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        side: BorderSide(color: cardBorder),
-                                      ),
-                                    ),
-                                  );
-                                }
                               } catch (e) {
                                 setSheetState(() => isSaving = false);
-                                if (ctx.mounted) {
-                                  ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Error: $e', style: const TextStyle(fontWeight: FontWeight.w500)),
-                                      backgroundColor: AppColors.red,
-                                    ),
-                                  );
-                                }
                               }
                             },
                       child: isSaving
@@ -923,20 +832,7 @@ class SettingsScreen extends ConsumerWidget {
                           : () async {
                               final pass = passwordController.text;
                               final confirmPass = confirmPasswordController.text;
-                              if (pass.length < 6) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Password must be at least 6 characters', style: TextStyle(fontWeight: FontWeight.w500)),
-                                  ),
-                                );
-                                return;
-                              }
-                              if (pass != confirmPass) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Passwords do not match', style: TextStyle(fontWeight: FontWeight.w500)),
-                                  ),
-                                );
+                              if (pass.length < 6 || pass != confirmPass) {
                                 return;
                               }
 
@@ -944,29 +840,8 @@ class SettingsScreen extends ConsumerWidget {
                               try {
                                 await ref.read(authRepositoryProvider).updatePassword(pass);
                                 if (ctx.mounted) Navigator.pop(ctx);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('🔒 Password updated successfully!', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
-                                      behavior: SnackBarBehavior.floating,
-                                      backgroundColor: cardBg,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        side: BorderSide(color: cardBorder),
-                                      ),
-                                    ),
-                                  );
-                                }
                               } catch (e) {
                                 setSheetState(() => isSaving = false);
-                                if (ctx.mounted) {
-                                  ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Error: $e', style: const TextStyle(fontWeight: FontWeight.w500)),
-                                      backgroundColor: AppColors.red,
-                                    ),
-                                  );
-                                }
                               }
                             },
                       child: isSaving
