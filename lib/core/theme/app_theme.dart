@@ -5,7 +5,10 @@ import 'app_colors.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get dark {
+  static final ThemeData dark = _buildDarkTheme();
+  static final ThemeData light = _buildLightTheme();
+
+  static ThemeData _buildDarkTheme() {
     final baseTextTheme = GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme);
 
     return ThemeData(
@@ -73,7 +76,7 @@ class AppTheme {
     );
   }
 
-  static ThemeData get light {
+  static ThemeData _buildLightTheme() {
     final baseTextTheme = GoogleFonts.plusJakartaSansTextTheme(ThemeData.light().textTheme);
 
     return ThemeData(

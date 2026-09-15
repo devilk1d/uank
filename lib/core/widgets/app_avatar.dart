@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
@@ -23,11 +24,15 @@ class AppAvatar extends StatelessWidget {
   final VoidCallback? onTap;
   final BoxBorder? border;
 
+  static final Map<String, Uint8List> _base64Cache = {};
+
   @override
   Widget build(BuildContext context) {
-    Widget avatarContent = _buildAvatarContent();
+    final avatarContent = _buildAvatarContent();
 
-    Widget avatarWidget = Container(
+    Widget avatarWidget = AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
       width: size,
       height: size,
       decoration: BoxDecoration(
@@ -68,7 +73,9 @@ class AppAvatar extends StatelessWidget {
           Positioned(
             bottom: 0,
             right: 0,
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
               padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: AppColors.primary,
@@ -131,13 +138,17 @@ class AppAvatar extends StatelessWidget {
       try {
         final commaIndex = url.indexOf(',');
         if (commaIndex != -1) {
-          final base64Data = url.substring(commaIndex + 1);
-          final bytes = base64Decode(base64Data);
+          final bytes = _base64Cache.putIfAbsent(url, () {
+            final base64Data = url.substring(commaIndex + 1);
+            return base64Decode(base64Data);
+          });
           return Image.memory(
             bytes,
+            key: ValueKey(url),
             width: size,
             height: size,
             fit: BoxFit.cover,
+            gaplessPlayback: true,
             errorBuilder: (context, error, stackTrace) => _buildFallback(),
           );
         }
@@ -149,9 +160,11 @@ class AppAvatar extends StatelessWidget {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return Image.network(
         url,
+        key: ValueKey(url),
         width: size,
         height: size,
         fit: BoxFit.cover,
+        gaplessPlayback: true,
         errorBuilder: (context, error, stackTrace) => _buildFallback(),
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;

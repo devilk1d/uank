@@ -10,7 +10,9 @@ class AppBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
       color: isDark ? AppColors.darkBgEnd : AppColors.lightBackground,
       child: Stack(
         children: [
@@ -54,7 +56,7 @@ class AppBackground extends StatelessWidget {
                 gradient: RadialGradient(
                   colors: [
                     AppColors.primary.withValues(alpha: isDark ? 0.18 : 0.12),
-                    Colors.transparent,
+                    AppColors.primary.withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -73,7 +75,7 @@ class AppBackground extends StatelessWidget {
                 gradient: RadialGradient(
                   colors: [
                     AppColors.teal.withValues(alpha: isDark ? 0.12 : 0.08),
-                    Colors.transparent,
+                    AppColors.teal.withValues(alpha: 0.0),
                   ],
                 ),
               ),

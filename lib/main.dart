@@ -47,15 +47,21 @@ class _UankAppState extends ConsumerState<UankApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(appThemeModeProvider);
-
-    return MaterialApp(
-      title: 'uank',
-      debugShowCheckedModeBanner: false,
-      themeMode: themeMode,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      home: const AuthGate(),
+    return Consumer(
+      builder: (context, ref, child) {
+        final themeMode = ref.watch(appThemeModeProvider);
+        return MaterialApp(
+          title: 'uank',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeMode,
+          themeAnimationDuration: const Duration(milliseconds: 250),
+          themeAnimationCurve: Curves.easeInOut,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          home: child,
+        );
+      },
+      child: const AuthGate(),
     );
   }
 }

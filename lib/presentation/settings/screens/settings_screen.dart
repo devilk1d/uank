@@ -74,8 +74,8 @@ class SettingsScreen extends ConsumerWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16.5,
+                                    fontWeight: FontWeight.w700,
                                     letterSpacing: -0.2,
                                     color: context.textPrimary,
                                   ),
@@ -161,10 +161,12 @@ class SettingsScreen extends ConsumerWidget {
                   iconColor: AppColors.yellow,
                   title: 'Dark Mode',
                   subtitle: isDark ? 'Deep Obsidian & Neon Lime' : 'Clean Light Surface',
-                  trailing: Switch(
-                    value: isDark,
-                    activeThumbColor: Colors.black,
-                    activeTrackColor: AppColors.primary,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    ref.read(appThemeModeProvider.notifier).toggle();
+                  },
+                  trailing: _SmoothThemeSwitch(
+                    isDark: isDark,
                     onChanged: (_) {
                       HapticFeedback.selectionClick();
                       ref.read(appThemeModeProvider.notifier).toggle();
@@ -189,7 +191,12 @@ class SettingsScreen extends ConsumerWidget {
                       trailing: Icon(Icons.chevron_right_rounded, color: context.textSecondary),
                       onTap: () => _showChangePasswordSheet(context, ref),
                     ),
-                    Divider(color: context.cardBorder, height: 1),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      height: 1,
+                      color: context.cardBorder,
+                    ),
                     _SettingsItemTile(
                       icon: Icons.logout_rounded,
                       iconColor: AppColors.red,
@@ -238,7 +245,7 @@ class SettingsScreen extends ConsumerWidget {
                             'U',
                             style: TextStyle(
                               fontSize: 18,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w800,
                               color: AppColors.primary,
                             ),
                           ),
@@ -247,7 +254,7 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'UANK • Personal Finance',
+                      'UANK - Personal Finance',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -257,7 +264,7 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'v1.0.0 (Build 1) • Crafted with Flutter & Supabase',
+                      'v1.0.0',
                       style: TextStyle(
                         fontSize: 11,
                         color: context.textMuted,
@@ -447,9 +454,11 @@ class SettingsScreen extends ConsumerWidget {
                                           errStr.contains('Unable to establish connection');
                                       ScaffoldMessenger.of(ctx).showSnackBar(
                                         SnackBar(
-                                          content: Text(isMissingPlugin
-                                              ? 'Aplikasi perlu di-restart penuh (Stop lalu Run/flutter run) agar native picker aktif.'
-                                              : 'Error: $e'),
+                                          content: Text(
+                                            isMissingPlugin
+                                                ? 'Aplikasi perlu di-restart penuh (Stop lalu Run/flutter run) agar native picker aktif.'
+                                                : 'Error: $e',
+                                          ),
                                           backgroundColor: AppColors.red,
                                         ),
                                       );
@@ -529,9 +538,11 @@ class SettingsScreen extends ConsumerWidget {
                                           errStr.contains('Unable to establish connection');
                                       ScaffoldMessenger.of(ctx).showSnackBar(
                                         SnackBar(
-                                          content: Text(isMissingPlugin
-                                              ? 'Aplikasi perlu di-restart penuh (Stop lalu Run/flutter run) agar native picker aktif.'
-                                              : 'Error: $e'),
+                                          content: Text(
+                                            isMissingPlugin
+                                                ? 'Aplikasi perlu di-restart penuh (Stop lalu Run/flutter run) agar native picker aktif.'
+                                                : 'Error: $e',
+                                          ),
                                           backgroundColor: AppColors.red,
                                         ),
                                       );
@@ -727,7 +738,7 @@ class SettingsScreen extends ConsumerWidget {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: const Text('✨ Profile name updated successfully!'),
+                                      content: Text('✨ Profile name updated successfully!', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
                                       behavior: SnackBarBehavior.floating,
                                       backgroundColor: cardBg,
                                       shape: RoundedRectangleBorder(
@@ -742,7 +753,7 @@ class SettingsScreen extends ConsumerWidget {
                                 if (ctx.mounted) {
                                   ScaffoldMessenger.of(ctx).showSnackBar(
                                     SnackBar(
-                                      content: Text('Error: $e'),
+                                      content: Text('Error: $e', style: const TextStyle(fontWeight: FontWeight.w500)),
                                       backgroundColor: AppColors.red,
                                     ),
                                   );
@@ -914,13 +925,17 @@ class SettingsScreen extends ConsumerWidget {
                               final confirmPass = confirmPasswordController.text;
                               if (pass.length < 6) {
                                 ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(content: Text('Password must be at least 6 characters')),
+                                  const SnackBar(
+                                    content: Text('Password must be at least 6 characters', style: TextStyle(fontWeight: FontWeight.w500)),
+                                  ),
                                 );
                                 return;
                               }
                               if (pass != confirmPass) {
                                 ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(content: Text('Passwords do not match')),
+                                  const SnackBar(
+                                    content: Text('Passwords do not match', style: TextStyle(fontWeight: FontWeight.w500)),
+                                  ),
                                 );
                                 return;
                               }
@@ -932,7 +947,7 @@ class SettingsScreen extends ConsumerWidget {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: const Text('🔒 Password updated successfully!'),
+                                      content: Text('🔒 Password updated successfully!', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
                                       behavior: SnackBarBehavior.floating,
                                       backgroundColor: cardBg,
                                       shape: RoundedRectangleBorder(
@@ -947,7 +962,7 @@ class SettingsScreen extends ConsumerWidget {
                                 if (ctx.mounted) {
                                   ScaffoldMessenger.of(ctx).showSnackBar(
                                     SnackBar(
-                                      content: Text('Error: $e'),
+                                      content: Text('Error: $e', style: const TextStyle(fontWeight: FontWeight.w500)),
                                       backgroundColor: AppColors.red,
                                     ),
                                   );
@@ -1058,6 +1073,72 @@ class _SettingsItemTile extends StatelessWidget {
               trailing!,
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SmoothThemeSwitch extends StatelessWidget {
+  const _SmoothThemeSwitch({
+    required this.isDark,
+    required this.onChanged,
+  });
+
+  final bool isDark;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: () => onChanged(!isDark),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.fastOutSlowIn,
+          width: 50,
+          height: 28,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: isDark ? AppColors.primary : const Color(0xFFE2E8F0),
+            boxShadow: isDark
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: AnimatedAlign(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.fastOutSlowIn,
+            alignment: isDark ? Alignment.centerRight : Alignment.centerLeft,
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isDark ? Colors.black : Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.12),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Icon(
+                  isDark ? Icons.nightlight_round : Icons.wb_sunny_rounded,
+                  size: 12,
+                  color: isDark ? AppColors.primary : const Color(0xFFF59E0B),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
