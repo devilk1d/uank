@@ -11,6 +11,7 @@ abstract class AccountBalance with _$AccountBalance {
     required String type,
     required String currency,
     required num balance,
+    @JsonKey(name: 'is_active') @Default(true) bool isActive,
   }) = _AccountBalance;
 
   factory AccountBalance.fromJson(Map<String, dynamic> json) =>

@@ -1,12 +1,15 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/widgets/app_calendar_sheet.dart';
+import '../../../core/widgets/app_confirmation_sheet.dart';
+import '../../../core/widgets/app_dropdown.dart';
 import '../../../domain/entities/saving_goal.dart';
+import '../../accounts/providers/account_providers.dart';
 import '../providers/saving_goal_providers.dart';
+import '../utils/saving_goal_ui_helpers.dart';
 
 class AddSavingGoalSheet extends ConsumerStatefulWidget {
   final SavingGoal? goalToEdit;
@@ -33,6 +36,7 @@ class _AddSavingGoalSheetState extends ConsumerState<AddSavingGoalSheet> {
   late final TextEditingController _currentAmountController;
 
   late String _currency;
+  String? _selectedAccountId;
   DateTime? _targetDate;
   late String _selectedIcon;
   late String _selectedColor;
@@ -74,6 +78,7 @@ class _AddSavingGoalSheetState extends ConsumerState<AddSavingGoalSheet> {
       text: g != null ? CurrencyInputFormatter.format(g.currentAmount) : '0',
     );
     _currency = g?.currency ?? 'IDR';
+    _selectedAccountId = g?.accountId;
     _selectedIcon = g?.icon ?? 'savings';
     _selectedColor = g?.color ?? '#CCFF00';
     if (g?.targetDate != null && g!.targetDate!.isNotEmpty) {
@@ -103,6 +108,8 @@ class _AddSavingGoalSheetState extends ConsumerState<AddSavingGoalSheet> {
     }
   }
 
+  Color _parseHexColor(String hex) => SavingGoalUIHelper.parseColor(hex);
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -126,6 +133,7 @@ class _AddSavingGoalSheetState extends ConsumerState<AddSavingGoalSheet> {
       if (widget.goalToEdit == null) {
         final newGoal = SavingGoal(
           id: '',
+          accountId: _selectedAccountId,
           name: _nameController.text.trim(),
           targetAmount: targetAmount,
           currentAmount: currentAmount,
@@ -138,15 +146,10 @@ class _AddSavingGoalSheetState extends ConsumerState<AddSavingGoalSheet> {
         await createSavingGoal(ref, newGoal);
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Saving Goal created successfully!'),
-              backgroundColor: AppColors.teal,
-            ),
-          );
         }
       } else {
         final updatedGoal = widget.goalToEdit!.copyWith(
+          accountId: _selectedAccountId,
           name: _nameController.text.trim(),
           targetAmount: targetAmount,
           currentAmount: currentAmount,
@@ -159,48 +162,22 @@ class _AddSavingGoalSheetState extends ConsumerState<AddSavingGoalSheet> {
         await updateSavingGoal(ref, updatedGoal);
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Saving Goal updated successfully!'),
-              backgroundColor: AppColors.teal,
-            ),
-          );
         }
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: $e'), backgroundColor: AppColors.red),
-        );
-      }
+    } catch (_) {
+      // Handled silently consistent with other forms
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _delete() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.darkCardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Goal', style: TextStyle(color: Colors.white, fontSize: 16)),
-        content: Text(
-          'Are you sure you want to delete "${widget.goalToEdit?.name}"?',
-          style: const TextStyle(color: AppColors.darkTextSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.red, foregroundColor: Colors.white),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirmationSheet.show(
+      context,
+      title: 'Delete Goal',
+      message: 'Are you sure you want to delete "${widget.goalToEdit?.name}"? All progress will be permanently lost.',
+      confirmLabel: 'Delete Goal',
+      icon: Icons.delete_outline_rounded,
     );
 
     if (confirm == true && widget.goalToEdit != null) {
@@ -209,426 +186,461 @@ class _AddSavingGoalSheetState extends ConsumerState<AddSavingGoalSheet> {
         await deleteSavingGoal(ref, widget.goalToEdit!.id);
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Goal deleted'), backgroundColor: AppColors.darkCardBg),
-          );
         }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete: $e'), backgroundColor: AppColors.red),
-          );
-        }
+      } catch (_) {
+        // Handled silently consistent with other forms
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
     }
   }
 
-  Color _parseHexColor(String hex) {
-    final clean = hex.replaceAll('#', '');
-    return Color(int.parse('FF$clean', radix: 16));
-  }
-
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final accountsAsync = ref.watch(accountsProvider);
+    final accountsList = accountsAsync.asData?.value ?? [];
     final isEdit = widget.goalToEdit != null;
     final isIdr = _currency == 'IDR';
     final symbol = isIdr ? 'Rp' : 'RM';
 
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-      child: Container(
-        padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottomInset),
-        decoration: BoxDecoration(
-          color: const Color(0xFF141418).withValues(alpha: 0.96),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.1),
-            width: 1.2,
-          ),
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 20, 22, 20 + bottomInset),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border(
+          top: BorderSide(color: context.cardBorder, width: 1.5),
         ),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Drag Handle
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+      ),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: context.textMuted.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(height: 18),
+              ),
+              const SizedBox(height: 18),
 
-                // Title & Delete button (if edit)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isEdit ? 'Edit Saving Goal' : 'New Saving Goal',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
+              // Title & Delete button (if edit)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isEdit ? 'Edit Saving Goal' : 'New Saving Goal',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: context.textPrimary,
                     ),
-                    if (isEdit)
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, color: AppColors.red),
-                        onPressed: _isLoading ? null : _delete,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-
-                // Goal Name
-                const Text(
-                  'Goal Name',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
-                ),
-                const SizedBox(height: 6),
-                TextFormField(
-                  controller: _nameController,
-                  textCapitalization: TextCapitalization.words,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                  decoration: InputDecoration(
-                    hintText: 'e.g. Emergency Fund, Trip to Tokyo, New Laptop',
-                    hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
-                    filled: true,
-                    fillColor: AppColors.darkCardBg,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a goal name' : null,
-                ),
-                const SizedBox(height: 16),
+                  if (isEdit)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: AppColors.red),
+                      onPressed: _isLoading ? null : _delete,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 18),
 
-                // Target Amount & Currency Switcher
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Target Amount',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
-                          ),
-                          const SizedBox(height: 6),
-                          TextFormField(
-                            controller: _targetAmountController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [CurrencyInputFormatter()],
-                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                            decoration: InputDecoration(
-                              prefixText: '$symbol ',
-                              prefixStyle: const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w700),
-                              hintText: '0',
-                              hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
-                              filled: true,
-                              fillColor: AppColors.darkCardBg,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            ),
-                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter target amount' : null,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Currency',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            height: 50,
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: AppColors.darkCardBg,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.darkCardBorder),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () => setState(() => _currency = 'IDR'),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: _currency == 'IDR' ? AppColors.primary : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        'IDR',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: _currency == 'IDR' ? Colors.black : AppColors.darkTextSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () => setState(() => _currency = 'MYR'),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: _currency == 'MYR' ? AppColors.primary : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        'MYR',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: _currency == 'MYR' ? Colors.black : AppColors.darkTextSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Initial / Current Amount
-                const Text(
-                  'Current Saved Amount (Optional)',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
-                ),
-                const SizedBox(height: 6),
-                TextFormField(
-                  controller: _currentAmountController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [CurrencyInputFormatter()],
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                  decoration: InputDecoration(
-                    prefixText: '$symbol ',
-                    prefixStyle: const TextStyle(color: AppColors.teal, fontSize: 14, fontWeight: FontWeight.w700),
-                    hintText: '0',
-                    hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
-                    filled: true,
-                    fillColor: AppColors.darkCardBg,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.teal, width: 1.2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              // Goal Name
+              Text(
+                'Goal Name',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
+              ),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                decoration: InputDecoration(
+                  hintText: 'e.g. Emergency Fund, Trip to Tokyo, New Laptop',
+                  hintStyle: TextStyle(color: context.textMuted, fontSize: 14),
+                  filled: true,
+                  fillColor: context.inputBg,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: context.cardBorder),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                // Target Date (Deadline)
-                const Text(
-                  'Target Deadline (Optional)',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
-                ),
-                const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: _pickDate,
-                  child: Container(
-                    height: 50,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.darkCardBg,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.darkCardBorder),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: context.cardBorder),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                      width: 1.2,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a goal name' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Target Amount & Currency Switcher
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.primaryLight),
-                            const SizedBox(width: 10),
-                            Text(
-                              _targetDate != null
-                                  ? '${_targetDate!.day}/${_targetDate!.month}/${_targetDate!.year}'
-                                  : 'Select target date',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: _targetDate != null ? Colors.white : AppColors.darkTextMuted,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          'Target Amount',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
                         ),
-                        if (_targetDate != null)
-                          GestureDetector(
-                            onTap: () => setState(() => _targetDate = null),
-                            child: const Icon(Icons.close_rounded, size: 18, color: AppColors.darkTextSecondary),
-                          )
-                        else
-                          const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.darkTextSecondary),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: _targetAmountController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [CurrencyInputFormatter()],
+                          style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                          decoration: InputDecoration(
+                            prefixText: '$symbol ',
+                            prefixStyle: TextStyle(color: context.accentLinkColor, fontSize: 14, fontWeight: FontWeight.w700),
+                            hintText: '0',
+                            hintStyle: TextStyle(color: context.textMuted, fontSize: 14),
+                            filled: true,
+                            fillColor: context.inputBg,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(color: context.cardBorder),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(color: context.cardBorder),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(color: context.isDark ? AppColors.primary : const Color(0xFF15803D), width: 1.2),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return 'Please enter target amount';
+                            if (CurrencyInputFormatter.parse(v) <= 0) return 'Must be > 0';
+                            return null;
+                          },
+                        ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                // Icon Selector
-                const Text(
-                  'Choose Icon',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
-                ),
-                const SizedBox(height: 8),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: _availableIcons.map((item) {
-                      final isSelected = item['name'] == _selectedIcon;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedIcon = item['name']),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          margin: const EdgeInsets.only(right: 8),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Currency',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          height: 50,
+                          padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isSelected
-                                ? _parseHexColor(_selectedColor).withValues(alpha: 0.25)
-                                : AppColors.darkCardBg,
-                            border: Border.all(
-                              color: isSelected ? _parseHexColor(_selectedColor) : AppColors.darkCardBorder,
-                              width: isSelected ? 2 : 1,
+                            color: context.inputBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: context.cardBorder),
+                          ),
+                          child: Row(
+                            children: [
+                              _buildCurrencyTab('IDR', accountsList),
+                              _buildCurrencyTab('MYR', accountsList),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Linked Account Dropdown (Filtered by selected currency)
+              accountsAsync.when(
+                data: (accounts) {
+                  final displayAccounts = accounts.where((a) => a.currency == _currency).toList();
+                  if (displayAccounts.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppDropdownFormField<String>(
+                        key: ValueKey('account_dropdown_${_currency}_$_selectedAccountId'),
+                        value: displayAccounts.any((a) => a.id == _selectedAccountId) ? _selectedAccountId : null,
+                        labelText: 'Link to Account (Optional)',
+                        hintText: 'Select account for auto-sync',
+                        sheetTitle: 'Select Linked Account',
+                        items: displayAccounts.map((acc) {
+                          return AppDropdownItem<String>(
+                            value: acc.id,
+                            label: '${acc.name} (${acc.currency})',
+                            subtitle: 'Type: ${acc.type.toUpperCase()}',
+                            icon: Icon(
+                              acc.type == 'bank'
+                                  ? Icons.account_balance_outlined
+                                  : acc.type == 'ewallet'
+                                      ? Icons.account_balance_wallet_outlined
+                                      : Icons.payments_outlined,
+                              size: 20,
+                              color: context.accentIconColor,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedAccountId = val);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
+
+              // Current Saved Balance
+              Text(
+                'Starting / Current Balance',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
+              ),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _currentAmountController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [CurrencyInputFormatter()],
+                style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                decoration: InputDecoration(
+                  prefixText: '$symbol ',
+                  prefixStyle: const TextStyle(color: AppColors.teal, fontSize: 14, fontWeight: FontWeight.w700),
+                  hintText: '0',
+                  hintStyle: TextStyle(color: context.textMuted, fontSize: 14),
+                  filled: true,
+                  fillColor: context.inputBg,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: context.cardBorder),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: context.cardBorder),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.teal, width: 1.2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Target Date (Deadline)
+              Text(
+                'Target Deadline (Optional)',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
+              ),
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: _pickDate,
+                child: Container(
+                  height: 50,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: context.inputBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: context.cardBorder),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_month_rounded, size: 18, color: context.accentIconColor),
+                          const SizedBox(width: 10),
+                          Text(
+                            _targetDate != null
+                                ? '${_targetDate!.day}/${_targetDate!.month}/${_targetDate!.year}'
+                                : 'Select target date',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: _targetDate != null ? context.textPrimary : context.textMuted,
                             ),
                           ),
-                          child: Icon(
-                            item['icon'] as IconData,
-                            size: 20,
-                            color: isSelected ? _parseHexColor(_selectedColor) : AppColors.darkTextSecondary,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                        ],
+                      ),
+                      if (_targetDate != null)
+                        GestureDetector(
+                          onTap: () => setState(() => _targetDate = null),
+                          child: Icon(Icons.close_rounded, size: 18, color: context.textSecondary),
+                        )
+                      else
+                        Icon(Icons.chevron_right_rounded, size: 18, color: context.textSecondary),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
+              ),
+              const SizedBox(height: 16),
 
-                // Color Accent Selector
-                const Text(
-                  'Theme Accent',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: _availableColors.map((hex) {
-                    final color = _parseHexColor(hex);
-                    final isSelected = hex == _selectedColor;
+              // Icon Selector
+              Text(
+                'Choose Icon',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _availableIcons.map((item) {
+                    final isSelected = item['name'] == _selectedIcon;
                     return GestureDetector(
-                      onTap: () => setState(() => _selectedColor = hex),
+                      onTap: () => setState(() => _selectedIcon = item['name']),
                       child: Container(
-                        width: 38,
-                        height: 38,
-                        margin: const EdgeInsets.only(right: 10),
+                        width: 44,
+                        height: 44,
+                        margin: const EdgeInsets.only(right: 8),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: color,
+                          color: isSelected
+                              ? _parseHexColor(_selectedColor).withValues(alpha: 0.25)
+                              : context.inputBg,
                           border: Border.all(
-                            color: isSelected ? Colors.white : Colors.transparent,
-                            width: 2.5,
+                            color: isSelected ? _parseHexColor(_selectedColor) : context.cardBorder,
+                            width: isSelected ? 2 : 1,
                           ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: color.withValues(alpha: 0.5),
-                                    blurRadius: 10,
-                                    spreadRadius: 1,
-                                  ),
-                                ]
-                              : null,
                         ),
-                        child: isSelected
-                            ? const Center(
-                                child: Icon(Icons.check_rounded, size: 18, color: Colors.black),
-                              )
-                            : null,
+                        child: Icon(
+                          item['icon'] as IconData,
+                          size: 20,
+                          color: isSelected
+                              ? SavingGoalUIHelper.getContrastColor(_parseHexColor(_selectedColor), context)
+                              : context.textSecondary,
+                        ),
                       ),
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 24),
+              ),
+              const SizedBox(height: 16),
 
-                // Submit Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
+              // Color Accent Selector
+              Text(
+                'Theme Accent',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: _availableColors.map((hex) {
+                  final color = _parseHexColor(hex);
+                  final isSelected = hex == _selectedColor;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedColor = hex),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      margin: const EdgeInsets.only(right: 10),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color,
+                        border: Border.all(
+                          color: isSelected ? (context.isDark ? Colors.white : Colors.black87) : Colors.transparent,
+                          width: 2.5,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: color.withValues(alpha: 0.5),
+                                  blurRadius: 10,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: isSelected
+                          ? const Center(
+                              child: Icon(Icons.check_rounded, size: 18, color: Colors.black),
+                            )
+                          : null,
                     ),
-                    onPressed: _isLoading ? null : _submit,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                          )
-                        : Text(
-                            isEdit ? 'Save Changes' : 'Create Goal',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-                          ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
                   ),
+                  onPressed: _isLoading ? null : _submit,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                        )
+                      : Text(
+                          isEdit ? 'Save Changes' : 'Create Goal',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                        ),
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCurrencyTab(String code, List<dynamic> accounts) {
+    final isSelected = _currency == code;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _currency = code;
+            final match = accounts.where((a) => a.currency == code).firstOrNull;
+            if (match != null) {
+              _selectedAccountId = match.id;
+            }
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            code,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              color: isSelected ? Colors.black : context.textSecondary,
             ),
           ),
         ),

@@ -8,6 +8,7 @@ abstract class SavingGoal with _$SavingGoal {
   const factory SavingGoal({
     required String id,
     @JsonKey(name: 'user_id') String? userId,
+    @JsonKey(name: 'account_id') String? accountId,
     required String name,
     @JsonKey(name: 'target_amount') required num targetAmount,
     @JsonKey(name: 'current_amount') @Default(0) num currentAmount,
@@ -20,5 +21,6 @@ abstract class SavingGoal with _$SavingGoal {
     @JsonKey(name: 'updated_at') String? updatedAt,
   }) = _SavingGoal;
 
-  factory SavingGoal.fromJson(Map<String, dynamic> json) => _$SavingGoalFromJson(json);
+  factory SavingGoal.fromJson(Map<String, dynamic> json) =>
+      _$SavingGoalFromJson(json);
 }

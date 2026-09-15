@@ -53,6 +53,7 @@ class DonutBreakdownChart extends StatelessWidget {
               segments: segments,
               total: total > 0 ? total : 1.0,
               strokeWidth: strokeWidth,
+              trackColor: context.isDark ? const Color(0xFF22242D) : const Color(0xFFE2E8F0),
             ),
           ),
           if (centerWidget != null)
@@ -76,11 +77,13 @@ class DonutBreakdownChart extends StatelessWidget {
       height: size - (strokeWidth * 2) - 14,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xFF14151A),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        color: context.isDark ? const Color(0xFF14151A) : Colors.white,
+        border: Border.all(
+          color: context.isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
+            color: Colors.black.withValues(alpha: context.isDark ? 0.45 : 0.08),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -96,7 +99,7 @@ class DonutBreakdownChart extends StatelessWidget {
               style: TextStyle(
                 fontSize: size > 130 ? 17 : 14,
                 fontWeight: FontWeight.w800,
-                color: topSegment.color,
+                color: context.adaptiveContrast(topSegment.color),
                 letterSpacing: -0.5,
               ),
             ),
@@ -108,10 +111,10 @@ class DonutBreakdownChart extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.darkTextSecondary,
+                  color: context.textSecondary,
                 ),
               ),
             ),
@@ -127,11 +130,13 @@ class _DonutChartPainter extends CustomPainter {
     required this.segments,
     required this.total,
     required this.strokeWidth,
+    required this.trackColor,
   });
 
   final List<DonutSegment> segments;
   final double total;
   final double strokeWidth;
+  final Color trackColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -141,7 +146,7 @@ class _DonutChartPainter extends CustomPainter {
 
     // Draw background track ring
     final bgPaint = Paint()
-      ..color = const Color(0xFF22242D)
+      ..color = trackColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
@@ -187,6 +192,8 @@ class _DonutChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _DonutChartPainter oldDelegate) {
-    return oldDelegate.segments != segments || oldDelegate.total != total;
+    return oldDelegate.segments != segments ||
+        oldDelegate.total != total ||
+        oldDelegate.trackColor != trackColor;
   }
 }

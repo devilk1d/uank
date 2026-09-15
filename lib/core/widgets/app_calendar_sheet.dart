@@ -107,11 +107,11 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
     final currentMonthName = _kMonthNames[_viewMonth.month - 1];
 
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.darkCardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border(
-          top: BorderSide(color: AppColors.darkCardBorder, width: 1.5),
+          top: BorderSide(color: context.cardBorder, width: 1.5),
         ),
       ),
       padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomInset),
@@ -125,7 +125,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.darkTextMuted,
+                color: context.textMuted,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -150,14 +150,14 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF22242D),
+                    color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.darkCardBorder),
+                    border: Border.all(color: context.cardBorder),
                   ),
                   child: Icon(
                     _isPickerMode ? Icons.arrow_back_rounded : Icons.close_rounded,
                     size: 18,
-                    color: AppColors.darkTextPrimary,
+                    color: context.textPrimary,
                   ),
                 ),
               ),
@@ -167,7 +167,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.chevron_left_rounded, size: 22, color: AppColors.darkTextSecondary),
+                      icon: Icon(Icons.chevron_left_rounded, size: 22, color: context.textSecondary),
                       onPressed: _prevMonth,
                       visualDensity: VisualDensity.compact,
                     ),
@@ -182,9 +182,9 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF22242D),
+                          color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.darkCardBorder),
+                          border: Border.all(color: context.cardBorder),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -194,7 +194,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.darkTextPrimary,
+                                color: context.textPrimary,
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -208,7 +208,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.chevron_right_rounded, size: 22, color: AppColors.darkTextSecondary),
+                      icon: Icon(Icons.chevron_right_rounded, size: 22, color: context.textSecondary),
                       onPressed: _nextMonth,
                       visualDensity: VisualDensity.compact,
                     ),
@@ -219,7 +219,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.chevron_left_rounded, size: 22, color: AppColors.darkTextSecondary),
+                      icon: Icon(Icons.chevron_left_rounded, size: 22, color: context.textSecondary),
                       onPressed: _prevYear,
                       visualDensity: VisualDensity.compact,
                     ),
@@ -230,10 +230,10 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF22242D),
+                          color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _isYearListMode ? AppColors.primary : AppColors.darkCardBorder,
+                            color: _isYearListMode ? AppColors.primary : context.cardBorder,
                           ),
                         ),
                         child: Row(
@@ -244,7 +244,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.darkTextPrimary,
+                                color: context.textPrimary,
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -260,7 +260,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.chevron_right_rounded, size: 22, color: AppColors.darkTextSecondary),
+                      icon: Icon(Icons.chevron_right_rounded, size: 22, color: context.textSecondary),
                       onPressed: _nextYear,
                       visualDensity: VisualDensity.compact,
                     ),
@@ -282,9 +282,9 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF22242D),
+                    color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.darkCardBorder),
+                    border: Border.all(color: context.cardBorder),
                   ),
                   child: Text(
                     'Today',
@@ -352,7 +352,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                             height: 38,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: isSelected ? const Color(0xFF15161B) : const Color(0xFF22242D),
+                              color: isSelected ? AppColors.primary : (context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground),
                               border: isSelected
                                   ? Border.all(color: AppColors.primary, width: 2.2)
                                   : isToday
@@ -375,10 +375,10 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                                   fontSize: 13,
                                   fontWeight: isSelected || isToday ? FontWeight.w700 : FontWeight.w500,
                                   color: isSelected
-                                      ? Colors.white
+                                      ? Colors.black
                                       : isToday
-                                          ? AppColors.primaryLight
-                                          : AppColors.darkTextSecondary,
+                                          ? (context.isDark ? AppColors.primaryLight : const Color(0xFF15803D))
+                                          : context.textSecondary,
                                 ),
                               ),
                             ),
@@ -396,9 +396,9 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E2028),
+                color: context.isDark ? const Color(0xFF1E2028) : AppColors.lightBackground,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.darkCardBorder),
+                border: Border.all(color: context.cardBorder),
               ),
               child: Row(
                 children: [
@@ -407,9 +407,9 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                     height: 38,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.primary.withValues(alpha: 0.15),
+                      color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.15),
                     ),
-                    child: const Icon(Icons.event_available_rounded, size: 20, color: AppColors.primaryLight),
+                    child: Icon(Icons.event_available_rounded, size: 20, color: context.accentIconColor),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -421,7 +421,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.darkTextPrimary,
+                            color: context.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -431,7 +431,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                               : '${_selectedDate.year == now.year ? '' : '${_selectedDate.year} \u00b7 '}${_selectedDate.weekday == 1 ? 'Monday' : _selectedDate.weekday == 2 ? 'Tuesday' : _selectedDate.weekday == 3 ? 'Wednesday' : _selectedDate.weekday == 4 ? 'Thursday' : _selectedDate.weekday == 5 ? 'Friday' : _selectedDate.weekday == 6 ? 'Saturday' : 'Sunday'}',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
-                            color: AppColors.darkTextSecondary,
+                            color: context.textSecondary,
                           ),
                         ),
                       ],
@@ -490,10 +490,10 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
               decoration: BoxDecoration(
-                color: isCurrentSelectedMonth ? AppColors.primary : const Color(0xFF22242D),
+                color: isCurrentSelectedMonth ? AppColors.primary : (context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isCurrentSelectedMonth ? AppColors.primary : AppColors.darkCardBorder,
+                  color: isCurrentSelectedMonth ? AppColors.primary : context.cardBorder,
                 ),
                 boxShadow: isCurrentSelectedMonth
                     ? [
@@ -511,7 +511,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     fontWeight: isCurrentSelectedMonth ? FontWeight.w700 : FontWeight.w600,
-                    color: isCurrentSelectedMonth ? Colors.black : AppColors.darkTextPrimary,
+                    color: isCurrentSelectedMonth ? Colors.black : context.textPrimary,
                   ),
                 ),
               ),
@@ -539,7 +539,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.darkTextSecondary,
+                color: context.textSecondary,
               ),
             ),
           ),
@@ -567,10 +567,10 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
                   decoration: BoxDecoration(
-                    color: isSelectedYear ? AppColors.primary : const Color(0xFF22242D),
+                    color: isSelectedYear ? AppColors.primary : (context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isSelectedYear ? AppColors.primary : AppColors.darkCardBorder,
+                      color: isSelectedYear ? AppColors.primary : context.cardBorder,
                     ),
                     boxShadow: isSelectedYear
                         ? [
@@ -588,7 +588,7 @@ class _AppDatePickerSheetState extends State<AppDatePickerSheet> {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: isSelectedYear ? FontWeight.w700 : FontWeight.w600,
-                        color: isSelectedYear ? Colors.black : AppColors.darkTextPrimary,
+                        color: isSelectedYear ? Colors.black : context.textPrimary,
                       ),
                     ),
                   ),
@@ -671,11 +671,11 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
     final now = DateTime.now();
 
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.darkCardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border(
-          top: BorderSide(color: AppColors.darkCardBorder, width: 1.5),
+          top: BorderSide(color: context.cardBorder, width: 1.5),
         ),
       ),
       padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomInset),
@@ -689,7 +689,7 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.darkTextMuted,
+                color: context.textMuted,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -712,14 +712,14 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF22242D),
+                    color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.darkCardBorder),
+                    border: Border.all(color: context.cardBorder),
                   ),
                   child: Icon(
                     _isYearListMode ? Icons.arrow_back_rounded : Icons.close_rounded,
                     size: 18,
-                    color: AppColors.darkTextPrimary,
+                    color: context.textPrimary,
                   ),
                 ),
               ),
@@ -729,7 +729,7 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.chevron_left_rounded, size: 22, color: AppColors.darkTextSecondary),
+                    icon: Icon(Icons.chevron_left_rounded, size: 22, color: context.textSecondary),
                     onPressed: _prevYear,
                     visualDensity: VisualDensity.compact,
                   ),
@@ -740,10 +740,10 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF22242D),
+                        color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _isYearListMode ? AppColors.primary : AppColors.darkCardBorder,
+                          color: _isYearListMode ? AppColors.primary : context.cardBorder,
                         ),
                       ),
                       child: Row(
@@ -754,7 +754,7 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.darkTextPrimary,
+                              color: context.textPrimary,
                             ),
                           ),
                           const SizedBox(width: 4),
@@ -770,7 +770,7 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.chevron_right_rounded, size: 22, color: AppColors.darkTextSecondary),
+                    icon: Icon(Icons.chevron_right_rounded, size: 22, color: context.textSecondary),
                     onPressed: _nextYear,
                     visualDensity: VisualDensity.compact,
                   ),
@@ -785,9 +785,9 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF22242D),
+                    color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.darkCardBorder),
+                    border: Border.all(color: context.cardBorder),
                   ),
                   child: Text(
                     'This Month',
@@ -838,14 +838,14 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : const Color(0xFF22242D),
+                color: isSelected ? AppColors.primary : (context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isSelected
                       ? AppColors.primary
                       : isThisMonth
                           ? AppColors.primary.withValues(alpha: 0.5)
-                          : AppColors.darkCardBorder,
+                          : context.cardBorder,
                   width: isSelected || isThisMonth ? 1.5 : 1.0,
                 ),
                 boxShadow: isSelected
@@ -864,7 +864,7 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     fontWeight: isSelected || isThisMonth ? FontWeight.w700 : FontWeight.w600,
-                    color: isSelected ? Colors.black : AppColors.darkTextPrimary,
+                    color: isSelected ? Colors.black : context.textPrimary,
                   ),
                 ),
               ),
@@ -892,7 +892,7 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.darkTextSecondary,
+                color: context.textSecondary,
               ),
             ),
           ),
@@ -920,10 +920,10 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
                   decoration: BoxDecoration(
-                    color: isSelectedYear ? AppColors.primary : const Color(0xFF22242D),
+                    color: isSelectedYear ? AppColors.primary : (context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isSelectedYear ? AppColors.primary : AppColors.darkCardBorder,
+                      color: isSelectedYear ? AppColors.primary : context.cardBorder,
                     ),
                     boxShadow: isSelectedYear
                         ? [
@@ -941,7 +941,7 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: isSelectedYear ? FontWeight.w700 : FontWeight.w600,
-                        color: isSelectedYear ? Colors.black : AppColors.darkTextPrimary,
+                        color: isSelectedYear ? Colors.black : context.textPrimary,
                       ),
                     ),
                   ),
@@ -969,7 +969,7 @@ class _CalendarWeekdayLabel extends StatelessWidget {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColors.darkTextSecondary,
+            color: context.textSecondary,
           ),
         ),
       ),

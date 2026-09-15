@@ -3,17 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_background.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_dropdown.dart';
 import '../../../domain/entities/account_balance.dart';
 import '../../../domain/entities/bill.dart';
 import '../../../domain/entities/bill_payment.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../accounts/providers/account_providers.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../../bills/providers/bill_providers.dart';
 import '../../bills/screens/add_bill_sheet.dart';
 import '../../exchange_rates/screens/exchange_rate_screen.dart';
 import '../../notifications/providers/notification_providers.dart';
 import '../../notifications/screens/notifications_screen.dart';
+import '../../repository_providers.dart';
+import '../../saving_goals/providers/saving_goal_providers.dart';
+import '../../saving_goals/screens/add_saving_goal_sheet.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../shell/main_shell.dart';
 import '../../transactions/providers/transaction_providers.dart';
@@ -49,32 +54,52 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
-            children: [
-              // 1. Header (Avatar, Greeting & Notification)
-              _buildHeader(unreadNotificationCount),
-              const SizedBox(height: 20),
+          child: RefreshIndicator(
+            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+            backgroundColor: context.cardBg,
+            onRefresh: () async {
+              ref.invalidate(accountBalancesProvider);
+              ref.invalidate(accountsProvider);
+              ref.invalidate(transactionsProvider);
+              ref.invalidate(billsProvider);
+              ref.invalidate(currentMonthBillPaymentsProvider);
+              ref.invalidate(unreadNotificationsCountProvider);
+              ref.invalidate(savingGoalsProvider);
+              await Future.wait([
+                ref.read(accountBalancesProvider.future),
+                ref.read(transactionsProvider.future),
+                ref.read(billsProvider.future),
+                ref.read(savingGoalsProvider.future),
+              ]);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
+              children: [
+                // 1. Header (Avatar, Greeting & Notification)
+                _buildHeader(unreadNotificationCount),
+                const SizedBox(height: 20),
 
-              // 2. Signature Electric Lime Hero Account Balance Card
-              balancesAsync.when(
-                data: (balances) => _buildHeroBalance(balances, transactions, accountMap),
-                loading: () => const _LoadingHero(),
-                error: (e, _) => _buildHeroBalance([], transactions, accountMap),
-              ),
-              const SizedBox(height: 22),
+                // 2. Signature Electric Lime Hero Account Balance Card
+                balancesAsync.when(
+                  data: (balances) => _buildHeroBalance(balances, transactions, accountMap),
+                  loading: () => const _LoadingHero(),
+                  error: (e, _) => _buildHeroBalance([], transactions, accountMap),
+                ),
+                const SizedBox(height: 22),
 
-              // 3. 4 Quick Action Buttons (Add, Transfer, Bills, Rates)
-              _buildQuickActions(),
-              const SizedBox(height: 24),
+                // 3. 4 Quick Action Buttons (Add, Transfer, Bills, Rates)
+                _buildQuickActions(),
+                const SizedBox(height: 24),
 
-              // 4. 2x2 Bento Overview Grid (Income, Expenses, Savings, Bills)
-              _buildBentoOverviewSection(transactions, balances, bills, payments, accountMap),
-              const SizedBox(height: 24),
+                // 4. 2x2 Bento Overview Grid (Income, Expenses, Savings, Bills)
+                _buildBentoOverviewSection(transactions, balances, bills, payments, accountMap),
+                const SizedBox(height: 24),
 
-              // 5. Activity / Recent Transactions in Large Dark Card
-              _buildRecentActivitySection(transactionsAsync, accountMap),
-            ],
+                // 5. Activity / Recent Transactions in Large Dark Card
+                _buildRecentActivitySection(transactionsAsync, accountMap),
+              ],
+            ),
           ),
         ),
       ),
@@ -82,11 +107,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildHeader(int unpaidBillsCount) {
+    final profile = ref.watch(userProfileProvider);
     final now = DateTime.now();
     final hour = now.hour;
     final greeting = hour < 12
         ? 'Good Morning'
         : (hour < 17 ? 'Good Afternoon' : 'Good Evening');
+
+    final firstName = profile?.displayName.split(' ').first ?? '';
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -94,49 +122,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         // Avatar + Greeting
         Row(
           children: [
-            GestureDetector(
+            AppAvatar(
+              avatarUrl: profile?.avatarUrl,
+              initialLetter: profile?.initialLetter ?? 'U',
+              size: 44,
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              ),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primary,
-                  border: Border.all(
-                    color: AppColors.primaryLight,
-                    width: 1.5,
-                  ),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.person_rounded,
-                    color: Colors.black,
-                    size: 22,
-                  ),
-                ),
               ),
             ),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Hello,',
+                Text(
+                  firstName.isNotEmpty ? 'Hello, $firstName' : 'Hello,',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.darkTextSecondary,
+                    color: context.textSecondary,
                   ),
                 ),
                 Text(
                   greeting,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.darkTextPrimary,
+                    color: context.textPrimary,
                   ),
                 ),
               ],
@@ -155,13 +167,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.darkCardBg,
-                  border: Border.all(color: AppColors.darkCardBorder),
+                  color: context.cardBg,
+                  border: Border.all(color: context.cardBorder),
+                  boxShadow: context.isDark
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.notifications_none_rounded,
                   size: 20,
-                  color: AppColors.darkTextPrimary,
+                  color: context.textPrimary,
                 ),
               ),
               if (unpaidBillsCount > 0)
@@ -174,7 +195,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.red,
                       borderRadius: BorderRadius.circular(9),
-                      border: Border.all(color: AppColors.darkBackground, width: 1.5),
+                      border: Border.all(color: context.isDark ? AppColors.darkBackground : Colors.white, width: 1.5),
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.red.withValues(alpha: 0.5),
@@ -208,8 +229,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     List<Transaction> transactions,
     Map<String, AccountBalance> accountMap,
   ) {
-    final idrBalances = balances.where((b) => b.currency == 'IDR').toList();
-    final myrBalances = balances.where((b) => b.currency == 'MYR').toList();
+    final activeBalances = balances.where((b) => b.isActive).toList();
+    final idrBalances = activeBalances.where((b) => b.currency == 'IDR').toList();
+    final myrBalances = activeBalances.where((b) => b.currency == 'MYR').toList();
     final totalIdr = idrBalances.fold<num>(0, (sum, b) => sum + b.balance);
     final totalMyr = myrBalances.fold<num>(0, (sum, b) => sum + b.balance);
 
@@ -379,7 +401,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           color: Color(0xFF22C55E),
                         ),
                         child: const Icon(
-                          Icons.arrow_outward_rounded,
+                          Icons.arrow_downward_rounded,
                           size: 16,
                           color: Colors.white,
                         ),
@@ -443,7 +465,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           color: Color(0xFFFF453A),
                         ),
                         child: const Icon(
-                          Icons.arrow_downward_rounded,
+                          Icons.arrow_outward_rounded,
                           size: 16,
                           color: Colors.white,
                         ),
@@ -489,7 +511,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _buildQuickActions() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _QuickActionButton(
           icon: Icons.add_rounded,
@@ -502,6 +524,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           label: 'Transfer',
           isHighlighted: true,
           onTap: () => AddTransferSheet.show(context),
+        ),
+        _QuickActionButton(
+          icon: Icons.savings_rounded,
+          label: 'Goals',
+          isHighlighted: false,
+          onTap: () => AddSavingGoalSheet.show(context),
         ),
         _QuickActionButton(
           icon: Icons.receipt_long_rounded,
@@ -642,12 +670,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Overview',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.darkTextPrimary,
+                color: context.textPrimary,
               ),
             ),
             AppFilterDropdown<String>(
@@ -700,6 +728,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 accentColor: const Color(0xFF14B8A6),
                 trendText: netSavings >= 0 ? 'Surplus' : 'Deficit',
                 isPositiveTrend: netSavings >= 0,
+                onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(4),
               ),
             ),
             const SizedBox(width: 12),
@@ -727,9 +756,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.darkCardBg,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.darkCardBorder),
+        border: Border.all(color: context.cardBorder),
+        boxShadow: context.isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -738,17 +776,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Transactions',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.darkTextPrimary,
+                  color: context.textPrimary,
                 ),
               ),
               GestureDetector(
                 onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(1),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
@@ -756,14 +794,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: context.accentLinkColor,
                       ),
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 12,
-                      color: AppColors.primary,
+                      color: context.accentLinkColor,
                     ),
                   ],
                 ),
@@ -780,15 +818,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Column(
                       children: [
-                        const Icon(Icons.receipt_outlined, size: 36, color: AppColors.darkTextMuted),
+                        Icon(Icons.receipt_outlined, size: 36, color: context.textMuted),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'No activity recorded yet.',
-                          style: TextStyle(color: AppColors.darkTextSecondary, fontSize: 12),
+                          style: TextStyle(color: context.textSecondary, fontSize: 12),
                         ),
                         TextButton(
                           onPressed: () => AddTransactionSheet.show(context),
-                          child: const Text('Record Transaction Now', style: TextStyle(color: AppColors.primaryLight)),
+                          child: Text(
+                            'Record Transaction Now',
+                            style: TextStyle(color: context.accentLinkColor),
+                          ),
                         ),
                       ],
                     ),
@@ -817,7 +858,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               );
             },
             loading: () => const _LoadingBlock(),
-            error: (e, _) => Text('$e', style: const TextStyle(color: AppColors.red, fontSize: 12)),
+            error: (e, _) {
+              final errStr = e.toString();
+              if (errStr.contains('JWT expired') || errStr.contains('PGRST303')) {
+                ref.read(authRepositoryProvider).refreshSessionIfNeeded();
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'Session expired. Refreshing...',
+                    style: TextStyle(color: AppColors.orange, fontSize: 12),
+                  ),
+                );
+              }
+              return Text('$e', style: const TextStyle(color: AppColors.red, fontSize: 12));
+            },
           ),
         ],
       ),
@@ -881,9 +935,18 @@ class _BentoMetricCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: AppColors.darkCardBg,
+          color: context.cardBg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.darkCardBorder),
+          border: Border.all(color: context.cardBorder),
+          boxShadow: context.isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -906,10 +969,10 @@ class _BentoMetricCard extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.darkTextSecondary,
+                      color: context.textSecondary,
                     ),
                   ),
                 ),
@@ -924,11 +987,11 @@ class _BentoMetricCard extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     amount,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.4,
-                      color: AppColors.darkTextPrimary,
+                      color: context.textPrimary,
                     ),
                   ),
                 ),
@@ -949,7 +1012,7 @@ class _BentoMetricCard extends StatelessWidget {
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: isPositiveTrend == null
-                              ? AppColors.darkTextSecondary
+                              ? context.textSecondary
                               : (isPositiveTrend! ? AppColors.green : AppColors.orange),
                         ),
                       ),
@@ -1020,38 +1083,45 @@ class _QuickActionButton extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 54,
-            height: 54,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isHighlighted ? AppColors.primary : AppColors.darkCardBg,
+              color: isHighlighted ? AppColors.primary : context.cardBg,
               border: Border.all(
-                color: isHighlighted ? AppColors.primaryLight : AppColors.darkCardBorder,
+                color: isHighlighted
+                    ? (context.isDark ? AppColors.primaryLight : const Color(0xFF15803D))
+                    : context.cardBorder,
                 width: 1.2,
               ),
-              boxShadow: isHighlighted
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.35),
-                        blurRadius: 18,
-                        offset: const Offset(0, 5),
-                      ),
-                    ]
-                  : null,
+              boxShadow: [
+                if (isHighlighted)
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 18,
+                    offset: const Offset(0, 5),
+                  )
+                else if (!context.isDark)
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+              ],
             ),
             child: Icon(
               icon,
-              size: 24,
-              color: isHighlighted ? Colors.black : AppColors.darkTextPrimary,
+              size: 22,
+              color: isHighlighted ? Colors.black : context.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppColors.darkTextSecondary,
+              color: context.textSecondary,
             ),
           ),
         ],
@@ -1078,54 +1148,60 @@ class _ActivityItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 9),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isNegative ? const Color(0xFFFF453A) : const Color(0xFF22C55E),
-                ),
-                child: Icon(
-                  isNegative ? Icons.arrow_downward_rounded : Icons.arrow_outward_rounded,
-                  size: 18,
-                  color: Colors.white,
-                ),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: (isNegative ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.15),
+              border: Border.all(
+                color: (isNegative ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.3),
               ),
-              const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkTextPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.darkTextSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
+            child: Icon(
+              isNegative ? Icons.arrow_outward_rounded : Icons.arrow_downward_rounded,
+              size: 18,
+              color: isNegative ? AppColors.red : (context.isDark ? AppColors.primaryLight : const Color(0xFF059669)),
+            ),
           ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
           Text(
             amount,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: isNegative ? AppColors.red : AppColors.darkTextPrimary,
+              color: isNegative ? AppColors.red : context.incomeColor,
             ),
           ),
         ],
@@ -1155,9 +1231,14 @@ class _LoadingBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
+    return SizedBox(
       height: 80,
-      child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+      child: Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+        ),
+      ),
     );
   }
 }

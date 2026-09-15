@@ -11,12 +11,14 @@ import '../../../domain/entities/transfer.dart';
 import '../../accounts/providers/account_providers.dart';
 import '../../transfers/providers/transfer_providers.dart';
 import '../../transfers/screens/add_transfer_sheet.dart';
+import '../../../core/widgets/app_confirmation_sheet.dart';
 import '../providers/transaction_providers.dart';
 import '../widgets/transaction_calendar_sheet.dart';
 import 'add_transaction_sheet.dart';
 
 abstract class _ActivityItem {
   DateTime get date;
+  DateTime? get createdAt;
 }
 
 class _TxActivityItem extends _ActivityItem {
@@ -24,6 +26,8 @@ class _TxActivityItem extends _ActivityItem {
   _TxActivityItem(this.transaction);
   @override
   DateTime get date => transaction.transactionDate;
+  @override
+  DateTime? get createdAt => transaction.createdAt;
 }
 
 class _TransferActivityItem extends _ActivityItem {
@@ -31,6 +35,21 @@ class _TransferActivityItem extends _ActivityItem {
   _TransferActivityItem(this.transfer);
   @override
   DateTime get date => transfer.transferDate;
+  @override
+  DateTime? get createdAt => transfer.createdAt;
+}
+
+int _compareActivityItems(_ActivityItem a, _ActivityItem b) {
+  final dateComp = b.date.compareTo(a.date);
+  if (dateComp != 0) return dateComp;
+  if (a.createdAt != null && b.createdAt != null) {
+    return b.createdAt!.compareTo(a.createdAt!);
+  } else if (b.createdAt != null) {
+    return 1;
+  } else if (a.createdAt != null) {
+    return -1;
+  }
+  return 0;
 }
 
 class TransactionsScreen extends ConsumerStatefulWidget {
@@ -58,10 +77,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       isScrollControlled: true,
       builder: (ctx) => Container(
         padding: const EdgeInsets.fromLTRB(22, 20, 22, 32),
-        decoration: const BoxDecoration(
-          color: AppColors.darkCardBg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border(top: BorderSide(color: AppColors.darkCardBorder, width: 1.5)),
+        decoration: BoxDecoration(
+          color: ctx.cardBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: ctx.cardBorder, width: 1.5)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -73,25 +92,25 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.darkTextMuted,
+                  color: ctx.textMuted,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             const SizedBox(height: 18),
 
-            const Text(
+            Text(
               'New Financial Entry',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: AppColors.darkTextPrimary,
+                color: ctx.textPrimary,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Choose what type of record you would like to create',
-              style: TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
+              style: TextStyle(fontSize: 12, color: ctx.textSecondary),
             ),
             const SizedBox(height: 20),
 
@@ -145,113 +164,130 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
-            children: [
-              // Header with Title & "+ Add" Action Button
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Transactions',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      color: AppColors.darkTextPrimary,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => _showAddOptionsModal(context),
-                    child: Container(
-                      height: 38,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.35),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add_rounded, size: 18, color: Colors.black),
-                          SizedBox(width: 4),
-                          Text(
-                            'Add',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-
-              // Filter Chips Row (Calendar Filter + All / Expense / Income / Transfer)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
+          child: RefreshIndicator(
+            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+            backgroundColor: context.cardBg,
+            onRefresh: () async {
+              ref.invalidate(transactionsProvider);
+              ref.invalidate(transfersProvider);
+              ref.invalidate(accountsProvider);
+              await Future.wait([
+                ref.read(transactionsProvider.future),
+                ref.read(transfersProvider.future),
+                ref.read(accountsProvider.future),
+              ]);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
+              children: [
+                // Header with Title & "+ Add" Action Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Calendar Filter Button
-                    _buildCalendarFilterPill(
-                      transactions: allTransactions,
-                      transfers: allTransfers,
-                      accountMap: accountMap,
+                    Text(
+                      'Transactions',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: context.textPrimary,
+                      ),
                     ),
-                    const SizedBox(width: 8),
-
-                    // Filter Chips (All / Expense / Income / Transfer)
-                    ...List.generate(_filters.length, (index) {
-                      final isSelected = _selectedFilterIndex == index;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedFilterIndex = index),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primary : AppColors.darkCardBg,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected ? AppColors.primary : AppColors.darkCardBorder,
-                              ),
+                    GestureDetector(
+                      onTap: () => _showAddOptionsModal(context),
+                      child: Container(
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.35),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
-                            child: Text(
-                              _filters[index],
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                                color: isSelected ? Colors.black : AppColors.darkTextSecondary,
-                              ),
-                            ),
-                          ),
+                          ],
                         ),
-                      );
-                    }),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_rounded, size: 18, color: Colors.black),
+                            SizedBox(width: 4),
+                            Text(
+                              'Add',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 18),
+
+                // Filter Chips Row (Calendar Filter + All / Expense / Income / Transfer)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      // Calendar Filter Button
+                      _buildCalendarFilterPill(
+                        transactions: allTransactions,
+                        transfers: allTransfers,
+                        accountMap: accountMap,
+                      ),
+                      const SizedBox(width: 8),
+
+                      // Filter Chips (All / Expense / Income / Transfer)
+                      ...List.generate(_filters.length, (index) {
+                        final isSelected = _selectedFilterIndex == index;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedFilterIndex = index),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.primary : context.cardBg,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? AppColors.primary : context.cardBorder,
+                                ),
+                              ),
+                              child: Text(
+                                _filters[index],
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                  color: isSelected ? Colors.black : context.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
 
               // Combined Activity List
               if (isLoading && !transactionsAsync.hasValue)
-                const Center(
+                Center(
                   child: Padding(
-                    padding: EdgeInsets.only(top: 80),
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                    padding: const EdgeInsets.only(top: 80),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                    ),
                   ),
                 )
               else if (hasError && !transactionsAsync.hasValue)
@@ -268,8 +304,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   static const _monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -351,10 +388,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         duration: const Duration(milliseconds: 180),
         padding: EdgeInsets.symmetric(horizontal: hasFilter ? 12 : 14, vertical: 8),
         decoration: BoxDecoration(
-          color: hasFilter ? AppColors.primary : AppColors.darkCardBg,
+          color: hasFilter ? AppColors.primary : context.cardBg,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: hasFilter ? AppColors.primary : AppColors.darkCardBorder,
+            color: hasFilter ? AppColors.primary : context.cardBorder,
           ),
           boxShadow: hasFilter
               ? [
@@ -372,7 +409,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             Icon(
               Icons.calendar_month_rounded,
               size: 15,
-              color: hasFilter ? Colors.black : AppColors.primary,
+              color: hasFilter ? Colors.black : context.accentIconColor,
             ),
             const SizedBox(width: 6),
             Text(
@@ -380,7 +417,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: hasFilter ? FontWeight.w700 : FontWeight.w600,
-                color: hasFilter ? Colors.black : AppColors.darkTextPrimary,
+                color: hasFilter ? Colors.black : context.textPrimary,
               ),
             ),
             if (hasFilter) ...[
@@ -448,27 +485,27 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       items = [
         ...transactions.map((t) => _TxActivityItem(t)),
         ...transfers.map((t) => _TransferActivityItem(t)),
-      ]..sort((a, b) => b.date.compareTo(a.date));
+      ]..sort(_compareActivityItems);
     } else if (_selectedFilterIndex == 1) {
       // Expense
       items = transactions
           .where((t) => t.type == 'expense')
           .map((t) => _TxActivityItem(t))
           .toList()
-        ..sort((a, b) => b.date.compareTo(a.date));
+        ..sort(_compareActivityItems);
     } else if (_selectedFilterIndex == 2) {
       // Income
       items = transactions
           .where((t) => t.type == 'income')
           .map((t) => _TxActivityItem(t))
           .toList()
-        ..sort((a, b) => b.date.compareTo(a.date));
+        ..sort(_compareActivityItems);
     } else if (_selectedFilterIndex == 3) {
       // Transfer
       items = transfers
           .map((t) => _TransferActivityItem(t))
           .toList()
-        ..sort((a, b) => b.date.compareTo(a.date));
+        ..sort(_compareActivityItems);
     }
 
     // Apply Calendar / Date Range / Month Filter
@@ -527,21 +564,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         ? Icons.swap_horiz_rounded
                         : Icons.receipt_long_outlined,
                 size: 48,
-                color: AppColors.darkTextMuted,
+                color: context.textMuted,
               ),
               const SizedBox(height: 12),
               Text(
                 emptyMessage,
-                style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 14),
+                style: TextStyle(color: context.textSecondary, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               if (hasDateFilter)
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF22242D),
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.darkCardBorder),
+                    backgroundColor: context.cardBg,
+                    foregroundColor: context.isDark ? AppColors.primary : context.textPrimary,
+                    side: BorderSide(color: context.cardBorder),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   onPressed: () {
@@ -594,7 +631,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: sortedDays.expand((day) {
-        final dayItems = groupedByDay[day]!;
+        final dayItems = groupedByDay[day]!..sort(_compareActivityItems);
         final summary = _computeDaySummary(dayItems);
 
         return [
@@ -653,11 +690,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.darkCardBg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        decoration: BoxDecoration(
+          color: ctx.cardBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           border: Border(
-            top: BorderSide(color: AppColors.darkCardBorder, width: 1.5),
+            top: BorderSide(color: ctx.cardBorder, width: 1.5),
           ),
         ),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
@@ -671,7 +708,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.darkTextMuted,
+                  color: ctx.textMuted,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -682,9 +719,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.black38,
+                color: ctx.isDark ? Colors.black38 : AppColors.lightBackground,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.darkCardBorder),
+                border: Border.all(color: ctx.cardBorder),
               ),
               child: Row(
                 children: [
@@ -693,15 +730,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: (isExpense ? AppColors.red : AppColors.primary).withValues(alpha: 0.15),
+                      color: (isExpense ? AppColors.red : (ctx.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.15),
                       border: Border.all(
-                        color: (isExpense ? AppColors.red : AppColors.primary).withValues(alpha: 0.3),
+                        color: (isExpense ? AppColors.red : (ctx.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Icon(
                       isExpense ? Icons.arrow_outward_rounded : Icons.arrow_downward_rounded,
                       size: 20,
-                      color: isExpense ? AppColors.red : AppColors.primaryLight,
+                      color: isExpense ? AppColors.red : (ctx.isDark ? AppColors.primaryLight : const Color(0xFF059669)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -715,10 +752,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                               : (isExpense ? 'Expense' : 'Income'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.darkTextPrimary,
+                            color: ctx.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -726,9 +763,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           '${account != null ? '${account.name} \u00b7 ' : ''}${isExpense ? 'Expense' : 'Income'} \u00b7 ${date.day}/${date.month}/${date.year}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.darkTextSecondary,
+                            color: ctx.textSecondary,
                           ),
                         ),
                       ],
@@ -740,7 +777,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: isExpense ? AppColors.red : AppColors.green,
+                      color: isExpense ? AppColors.red : (ctx.isDark ? AppColors.green : const Color(0xFF059669)),
                     ),
                   ),
                 ],
@@ -800,11 +837,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.darkCardBg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        decoration: BoxDecoration(
+          color: ctx.cardBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           border: Border(
-            top: BorderSide(color: AppColors.darkCardBorder, width: 1.5),
+            top: BorderSide(color: ctx.cardBorder, width: 1.5),
           ),
         ),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
@@ -818,7 +855,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.darkTextMuted,
+                  color: ctx.textMuted,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -829,9 +866,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.black38,
+                color: ctx.isDark ? Colors.black38 : AppColors.lightBackground,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.darkCardBorder),
+                border: Border.all(color: ctx.cardBorder),
               ),
               child: Row(
                 children: [
@@ -860,10 +897,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           '$fromName \u2192 $toName',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.darkTextPrimary,
+                            color: ctx.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -871,9 +908,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           'Transfer \u00b7 ${date.day}/${date.month}/${date.year}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.darkTextSecondary,
+                            color: ctx.textSecondary,
                           ),
                         ),
                       ],
@@ -917,32 +954,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         ? 'RM ${transaction.amount % 1 == 0 ? transaction.amount.toStringAsFixed(0) : transaction.amount.toStringAsFixed(2)}'
         : 'Rp ${_formatNumber(transaction.amount)}';
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.darkCardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Delete Transaction', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-        content: Text(
-          'Are you sure you want to delete this ${transaction.type} transaction of $formattedAmount?',
-          style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.darkTextSecondary)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirmationSheet.show(
+      context,
+      title: 'Delete Transaction',
+      message: 'Are you sure you want to delete this ${transaction.type} transaction of $formattedAmount?',
+      confirmLabel: 'Delete Transaction',
+      icon: Icons.delete_outline_rounded,
     );
 
     if (confirm == true) {
@@ -964,32 +981,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         ? 'RM ${transfer.amountFrom % 1 == 0 ? transfer.amountFrom.toStringAsFixed(0) : transfer.amountFrom.toStringAsFixed(2)}'
         : 'Rp ${_formatNumber(transfer.amountFrom)}';
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.darkCardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Delete Transfer Log', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-        content: Text(
-          'Are you sure you want to delete this transfer of $formattedAmount from $fromName to $toName?',
-          style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.darkTextSecondary)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirmationSheet.show(
+      context,
+      title: 'Delete Transfer Log',
+      message: 'Are you sure you want to delete this transfer of $formattedAmount from $fromName to $toName?',
+      confirmLabel: 'Delete Transfer',
+      icon: Icons.delete_outline_rounded,
     );
 
     if (confirm == true) {
@@ -1032,9 +1029,9 @@ class _AddActionOptionTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.black45,
+          color: context.isDark ? Colors.black45 : AppColors.lightCardBg,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.darkCardBorder),
+          border: Border.all(color: context.cardBorder),
         ),
         child: Row(
           children: [
@@ -1054,24 +1051,24 @@ class _AddActionOptionTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.darkTextPrimary,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.darkTextSecondary,
+                      color: context.textSecondary,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.darkTextSecondary, size: 20),
+            Icon(Icons.chevron_right_rounded, color: context.textSecondary, size: 20),
           ],
         ),
       ),
@@ -1115,15 +1112,15 @@ class _TransactionCard extends StatelessWidget {
                     height: 42,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: (isExpense ? AppColors.red : AppColors.primary).withValues(alpha: 0.15),
+                      color: (isExpense ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.15),
                       border: Border.all(
-                        color: (isExpense ? AppColors.red : AppColors.primary).withValues(alpha: 0.3),
+                        color: (isExpense ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Icon(
                       isExpense ? Icons.arrow_outward_rounded : Icons.arrow_downward_rounded,
                       size: 18,
-                      color: isExpense ? AppColors.red : AppColors.primaryLight,
+                      color: isExpense ? AppColors.red : (context.isDark ? AppColors.primaryLight : const Color(0xFF059669)),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -1137,10 +1134,10 @@ class _TransactionCard extends StatelessWidget {
                               : (isExpense ? 'Expense' : 'Income'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.darkTextPrimary,
+                            color: context.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -1148,10 +1145,10 @@ class _TransactionCard extends StatelessWidget {
                           '${account != null ? '${account!.name} \u00b7 ' : ''}${isExpense ? 'Expense' : 'Income'} \u00b7 ${date.day}/${date.month}/${date.year}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: AppColors.darkTextSecondary,
+                            color: context.textSecondary,
                           ),
                         ),
                       ],
@@ -1166,7 +1163,7 @@ class _TransactionCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: isExpense ? AppColors.red : AppColors.green,
+                color: isExpense ? AppColors.red : (context.isDark ? AppColors.green : const Color(0xFF059669)),
               ),
             ),
           ],
@@ -1252,10 +1249,10 @@ class _TransferCard extends StatelessWidget {
                           '$fromName \u2192 $toName',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.darkTextPrimary,
+                            color: context.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -1263,10 +1260,10 @@ class _TransferCard extends StatelessWidget {
                           'Transfer \u00b7 ${date.day}/${date.month}/${date.year}${transfer.notes != null && transfer.notes!.isNotEmpty ? ' \u00b7 ${transfer.notes}' : ''}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: AppColors.darkTextSecondary,
+                            color: context.textSecondary,
                           ),
                         ),
                       ],
@@ -1290,10 +1287,10 @@ class _TransferCard extends StatelessWidget {
                 if (!isSameCurrency)
                   Text(
                     '\u2192 $toAmountStr',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.darkTextSecondary,
+                      color: context.textSecondary,
                     ),
                   ),
               ],
@@ -1375,7 +1372,7 @@ class _DateSectionHeader extends StatelessWidget {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.darkTextPrimary,
+                  color: context.textPrimary,
                   letterSpacing: 0.2,
                 ),
               ),
@@ -1387,9 +1384,9 @@ class _DateSectionHeader extends StatelessWidget {
                 margin: const EdgeInsets.only(left: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E2028),
+                  color: context.isDark ? const Color(0xFF1E2028) : AppColors.lightCardBorder.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.darkCardBorder),
+                  border: Border.all(color: context.cardBorder),
                 ),
                 child: Text(
                   summaryText,
@@ -1398,7 +1395,7 @@ class _DateSectionHeader extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.darkTextSecondary,
+                    color: context.textSecondary,
                   ),
                 ),
               ),

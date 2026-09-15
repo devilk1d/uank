@@ -1,7 +1,7 @@
 -- =========================================================
--- SKEMA DATABASE: APLIKASI MANAJEMEN KEUANGAN
--- Target: Supabase (PostgreSQL)
--- Cara pakai: copy-paste seluruh file ini ke Supabase SQL Editor, lalu Run
+-- SKEMA DATABASE: APLIKASI MANAJEMEN KEUANGAN (UANK)
+-- Target: Supabase (PostgreSQL 15+)
+-- Cara pakai: Copy-paste seluruh file ini ke Supabase SQL Editor, lalu Run
 -- =========================================================
 
 
@@ -15,11 +15,11 @@ create extension if not exists "pgcrypto"; -- buat gen_random_uuid()
 -- 2. TABEL UTAMA
 -- =========================================================
 
--- --- Sumber Uang (akun: bank, e-wallet, cash) ---
-create table accounts (
+-- --- 1. Sumber Uang (Akun: Bank, E-Wallet, Cash) ---
+create table if not exists accounts (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users not null,
-  name text not null,                          -- "Bank Maybank", "TNG Wallet"
+  user_id uuid references auth.users not null default auth.uid(),
+  name text not null,                          -- "Bank BCA", "Maybank", "TNG Wallet"
   type text not null check (type in ('bank', 'ewallet', 'cash')),
   currency text not null check (currency in ('IDR', 'MYR')),
   is_active boolean default true,
@@ -27,35 +27,35 @@ create table accounts (
   updated_at timestamptz default now()
 );
 
--- --- Kategori transaksi ---
-create table categories (
+-- --- 2. Kategori Transaksi ---
+create table if not exists categories (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users not null,
+  user_id uuid references auth.users not null default auth.uid(),
   name text not null,
   type text not null check (type in ('income', 'expense')),
-  icon text,                                   -- opsional: nama icon buat UI
+  icon text,                                   -- nama icon untuk UI (misal: 'restaurant', 'shopping_bag')
   created_at timestamptz default now()
 );
 
--- --- Transaksi (uang masuk & keluar, digabung 1 tabel) ---
-create table transactions (
+-- --- 3. Transaksi (Uang Masuk & Keluar) ---
+create table if not exists transactions (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users not null,
+  user_id uuid references auth.users not null default auth.uid(),
   account_id uuid references accounts not null,
   category_id uuid references categories,
   type text not null check (type in ('income', 'expense')),
   amount numeric(15,2) not null check (amount > 0),
-  amount_idr numeric(15,2),                    -- setara IDR, diisi otomatis via trigger
+  amount_idr numeric(15,2),                    -- setara IDR, diisi otomatis via trigger fill_amount_idr
   description text,
   transaction_date date not null default current_date,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
--- --- Transfer antar akun (termasuk beda currency) ---
-create table transfers (
+-- --- 4. Transfer Antar Akun (Termasuk Beda Currency / Valas) ---
+create table if not exists transfers (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users not null,
+  user_id uuid references auth.users not null default auth.uid(),
   from_account_id uuid references accounts not null,
   to_account_id uuid references accounts not null,
   amount_from numeric(15,2) not null check (amount_from > 0),
@@ -67,11 +67,11 @@ create table transfers (
   constraint different_accounts check (from_account_id <> to_account_id)
 );
 
--- --- Tagihan bulanan (aturan/template tagihan) ---
-create table bills (
+-- --- 5. Tagihan Bulanan (Bills) ---
+create table if not exists bills (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users not null,
-  name text not null,                          -- "Listrik", "Internet"
+  user_id uuid references auth.users not null default auth.uid(),
+  name text not null,                          -- "Listrik", "Internet", "Sewa Apartemen"
   amount numeric(15,2) not null check (amount > 0),
   currency text not null check (currency in ('IDR', 'MYR')),
   due_day int not null check (due_day between 1 and 31),
@@ -81,34 +81,51 @@ create table bills (
   created_at timestamptz default now()
 );
 
--- --- Histori pembayaran tagihan per bulan ---
-create table bill_payments (
+-- --- 6. Histori Pembayaran Tagihan Per Bulan ---
+create table if not exists bill_payments (
   id uuid primary key default gen_random_uuid(),
   bill_id uuid references bills not null,
-  user_id uuid references auth.users not null,
+  user_id uuid references auth.users not null default auth.uid(),
   period_month date not null,                  -- selalu tanggal 1, misal '2026-09-01'
   amount_paid numeric(15,2),
   paid_date date,
   status text not null default 'pending' check (status in ('pending', 'paid', 'overdue')),
-  transaction_id uuid references transactions, -- link ke transaksi expense kalau sudah dibayar
+  transaction_id uuid references transactions, -- link ke transaksi expense jika sudah dibayar
   created_at timestamptz default now(),
-  unique (bill_id, period_month)                -- 1 tagihan cuma 1 entry per bulan
+  unique (bill_id, period_month)
 );
 
--- --- Cache kurs mata uang (dari Wise/Flip) ---
-create table exchange_rates (
+-- --- 7. Target Menabung (Saving Goals) ---
+create table if not exists saving_goals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users not null default auth.uid(),
+  account_id uuid references accounts,
+  name text not null,
+  target_amount numeric(15,2) not null check (target_amount > 0),
+  current_amount numeric(15,2) not null default 0 check (current_amount >= 0),
+  currency text not null check (currency in ('IDR', 'MYR')),
+  target_date date,
+  icon text not null default 'savings',
+  color text not null default '#CCFF00',
+  is_completed boolean not null default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- --- 8. Cache Kurs Mata Uang (Exchange Rates) ---
+create table if not exists exchange_rates (
   id uuid primary key default gen_random_uuid(),
   from_currency text not null,
   to_currency text not null,
   rate numeric(15,6) not null,
-  source text not null check (source in ('wise', 'flip', 'manual')),
+  source text not null check (source in ('wise', 'flip', 'manual', 'api')),
   fetched_at timestamptz default now()
 );
 
--- --- Device token buat push notification (FCM) ---
-create table device_tokens (
+-- --- 9. Device Token Buat Push Notification (FCM) ---
+create table if not exists device_tokens (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users not null,
+  user_id uuid references auth.users not null default auth.uid(),
   fcm_token text not null unique,
   platform text check (platform in ('android', 'ios', 'web')),
   created_at timestamptz default now()
@@ -116,17 +133,63 @@ create table device_tokens (
 
 
 -- =========================================================
--- 3. INDEX (biar query cepat walau data sudah ribuan baris)
+-- 2.1 SAFE UPGRADES (Untuk Database yang Sudah Berisi Data)
+-- Memastikan kolom baru & default terpasang tanpa merusak data
 -- =========================================================
-create index idx_transactions_user_date on transactions (user_id, transaction_date desc);
-create index idx_transactions_account on transactions (account_id);
-create index idx_transfers_accounts on transfers (from_account_id, to_account_id);
-create index idx_bill_payments_period on bill_payments (period_month, status);
-create index idx_exchange_rates_lookup on exchange_rates (from_currency, to_currency, fetched_at desc);
+alter table accounts add column if not exists is_active boolean default true;
+alter table accounts alter column user_id set default auth.uid();
+
+alter table categories alter column user_id set default auth.uid();
+alter table transactions alter column user_id set default auth.uid();
+alter table transfers alter column user_id set default auth.uid();
+
+alter table bills add column if not exists is_active boolean default true;
+alter table bills alter column user_id set default auth.uid();
+
+alter table bill_payments alter column user_id set default auth.uid();
+alter table device_tokens alter column user_id set default auth.uid();
 
 
 -- =========================================================
--- 4. FUNCTION + TRIGGER: auto-update `updated_at`
+-- 3. INDEXES (Performa Query & JOIN Maksimal)
+-- =========================================================
+
+-- Accounts
+create index if not exists idx_accounts_user_id on accounts (user_id);
+create index if not exists idx_accounts_user_active on accounts (user_id, is_active);
+
+-- Categories
+create index if not exists idx_categories_user_type on categories (user_id, type);
+
+-- Transactions
+create index if not exists idx_transactions_user_date on transactions (user_id, transaction_date desc);
+create index if not exists idx_transactions_account on transactions (account_id);
+create index if not exists idx_transactions_category on transactions (category_id);
+create index if not exists idx_transactions_user_type on transactions (user_id, type);
+
+-- Transfers
+create index if not exists idx_transfers_user_date on transfers (user_id, transfer_date desc);
+create index if not exists idx_transfers_from_account on transfers (from_account_id);
+create index if not exists idx_transfers_to_account on transfers (to_account_id);
+
+-- Bills & Payments
+create index if not exists idx_bills_user_active on bills (user_id, is_active);
+create index if not exists idx_bills_account on bills (account_id);
+create index if not exists idx_bill_payments_bill on bill_payments (bill_id);
+create index if not exists idx_bill_payments_user on bill_payments (user_id);
+create index if not exists idx_bill_payments_period_status on bill_payments (period_month, status);
+create index if not exists idx_bill_payments_transaction on bill_payments (transaction_id);
+
+-- Saving Goals
+create index if not exists idx_saving_goals_user_completed on saving_goals (user_id, is_completed);
+create index if not exists idx_saving_goals_account on saving_goals (account_id);
+
+-- Exchange Rates
+create index if not exists idx_exchange_rates_lookup on exchange_rates (from_currency, to_currency, fetched_at desc);
+
+
+-- =========================================================
+-- 4. FUNCTION + TRIGGER: Auto-Update `updated_at`
 -- =========================================================
 create or replace function set_updated_at()
 returns trigger as $$
@@ -136,19 +199,24 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists trg_accounts_updated_at on accounts;
 create trigger trg_accounts_updated_at
   before update on accounts
   for each row execute function set_updated_at();
 
+drop trigger if exists trg_transactions_updated_at on transactions;
 create trigger trg_transactions_updated_at
   before update on transactions
   for each row execute function set_updated_at();
 
+drop trigger if exists trg_saving_goals_updated_at on saving_goals;
+create trigger trg_saving_goals_updated_at
+  before update on saving_goals
+  for each row execute function set_updated_at();
+
 
 -- =========================================================
--- 5. FUNCTION + TRIGGER: auto-isi amount_idr saat transaksi dibuat
--- Ini yang bikin dashboard "total kekayaan dalam IDR" gak perlu
--- dihitung manual di frontend tiap kali.
+-- 5. FUNCTION + TRIGGER: Auto-isi amount_idr
 -- =========================================================
 create or replace function fill_amount_idr()
 returns trigger as $$
@@ -161,7 +229,7 @@ begin
   if acc_currency = 'IDR' then
     new.amount_idr := new.amount;
   else
-    -- ambil kurs terbaru MYR->IDR yang sudah di-cache
+    -- Ambil kurs terbaru MYR -> IDR dari cache exchange_rates
     select rate into latest_rate
     from exchange_rates
     where from_currency = acc_currency and to_currency = 'IDR'
@@ -169,8 +237,6 @@ begin
     limit 1;
 
     if latest_rate is null then
-      -- fallback: kalau belum ada kurs di-cache, biarkan null,
-      -- nanti bisa di-backfill lewat job terpisah
       new.amount_idr := null;
     else
       new.amount_idr := new.amount * latest_rate;
@@ -181,15 +247,24 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists trg_fill_amount_idr on transactions;
 create trigger trg_fill_amount_idr
-  before insert on transactions
+  before insert or update of amount, account_id on transactions
   for each row execute function fill_amount_idr();
 
 
 -- =========================================================
--- 6. VIEW: saldo tiap akun (real-time, tanpa perlu disimpan manual)
+-- 6. VIEWS (Dengan security_invoker = true)
 -- =========================================================
-create view account_balances as
+
+-- Drop views lama agar tidak ada konflik struktur saat recreate
+drop view if exists monthly_expense_by_category cascade;
+drop view if exists net_worth_summary cascade;
+drop view if exists account_balances cascade;
+
+-- --- 1. Saldo Real-Time Tiap Akun ---
+create or replace view account_balances
+with (security_invoker = true) as
 select
   a.id as account_id,
   a.user_id,
@@ -198,7 +273,8 @@ select
   a.currency,
   coalesce(tx.net, 0)
     + coalesce(transfer_in.total, 0)
-    - coalesce(transfer_out.total, 0) as balance
+    - coalesce(transfer_out.total, 0) as balance,
+  a.is_active
 from accounts a
 left join (
   select account_id,
@@ -215,16 +291,12 @@ left join (
   select from_account_id, sum(amount_from) as total
   from transfers
   group by from_account_id
-) transfer_out on transfer_out.from_account_id = a.id
-where a.is_active = true;
+) transfer_out on transfer_out.from_account_id = a.id;
 
 
--- =========================================================
--- 7. VIEW: ringkasan kekayaan total dalam IDR (buat Dashboard)
--- Kurs MYR->IDR terbaru diambil sekali (bukan per baris) biar efisien,
--- dan tetap benar walau user cuma punya akun IDR (tidak butuh kurs sama sekali).
--- =========================================================
-create view net_worth_summary as
+-- --- 2. Ringkasan Total Kekayaan (Net Worth) dalam IDR ---
+create or replace view net_worth_summary
+with (security_invoker = true) as
 with latest_rate as (
   select rate from exchange_rates
   where from_currency = 'MYR' and to_currency = 'IDR'
@@ -234,17 +306,17 @@ select
   ab.user_id,
   sum(
     case when ab.currency = 'IDR' then ab.balance
-         else ab.balance * (select rate from latest_rate)
+         else ab.balance * coalesce((select rate from latest_rate), 1.0)
     end
   ) as total_idr
 from account_balances ab
+where ab.is_active = true
 group by ab.user_id;
 
 
--- =========================================================
--- 8. VIEW: pengeluaran per kategori bulan berjalan (buat chart/report)
--- =========================================================
-create view monthly_expense_by_category as
+-- --- 3. Pengeluaran Per Kategori Bulan Berjalan ---
+create or replace view monthly_expense_by_category
+with (security_invoker = true) as
 select
   t.user_id,
   date_trunc('month', t.transaction_date) as month,
@@ -257,10 +329,10 @@ group by t.user_id, date_trunc('month', t.transaction_date), c.name;
 
 
 -- =========================================================
--- 9. FUNCTION: generate bill_payments otomatis tiap bulan
--- Dipanggil oleh Edge Function / pg_cron tiap awal bulan.
--- Tanpa ini, kamu harus insert manual tiap bulan buat tiap tagihan.
+-- 7. STORED FUNCTIONS
 -- =========================================================
+
+-- --- 1. Generate Tagihan Bulanan Otomatis ---
 create or replace function generate_monthly_bill_payments()
 returns void as $$
 begin
@@ -277,10 +349,7 @@ end;
 $$ language plpgsql security definer;
 
 
--- =========================================================
--- 10. FUNCTION: tandai bill_payments jadi 'overdue' kalau lewat due_day
--- Dipanggil harian oleh Edge Function / pg_cron.
--- =========================================================
+-- --- 2. Tandai Tagihan Overdue ---
 create or replace function mark_overdue_bills()
 returns void as $$
 begin
@@ -295,11 +364,7 @@ end;
 $$ language plpgsql security definer;
 
 
--- =========================================================
--- 11. FUNCTION: cari tagihan yang perlu di-reminder hari ini
--- Dipanggil oleh Edge Function harian, hasilnya dipakai buat
--- kirim push notification lewat FCM.
--- =========================================================
+-- --- 3. Ambil Tagihan yang Perlu Di-Reminder Hari Ini ---
 create or replace function bills_due_for_reminder()
 returns table (
   bill_id uuid,
@@ -330,23 +395,21 @@ end;
 $$ language plpgsql security definer;
 
 
--- =========================================================
--- 12. FUNCTION: catat pembayaran tagihan sekaligus bikin transaksi expense
--- Ini yang dipanggil dari app saat user klik "Tandai Sudah Bayar".
--- Menjaga konsistensi: sekali klik, 2 tabel ke-update bareng (atomic).
--- =========================================================
+-- --- 4. Pembayaran Tagihan Atomik (Pay Bill) ---
 create or replace function pay_bill(
   p_bill_id uuid,
   p_account_id uuid,
   p_amount numeric,
   p_category_id uuid default null,
-  p_period date default null
+  p_period date default null,
+  p_paid_date date default null
 )
 returns uuid as $$
 declare
   v_user_id uuid;
   v_bill_name text;
   v_period date;
+  v_paid_date date;
   v_tx_id uuid;
 begin
   select user_id, name into v_user_id, v_bill_name from bills where id = p_bill_id;
@@ -357,18 +420,20 @@ begin
     v_period := date_trunc('month', current_date)::date;
   end if;
 
+  v_paid_date := coalesce(p_paid_date, current_date);
+
   insert into transactions (user_id, account_id, category_id, type, amount, description, transaction_date)
   values (v_user_id, p_account_id, p_category_id, 'expense', p_amount,
-          'Pembayaran ' || coalesce(v_bill_name, 'Tagihan'), coalesce(p_period, current_date))
+          'Pembayaran ' || coalesce(v_bill_name, 'Tagihan'), v_paid_date)
   returning id into v_tx_id;
 
   insert into bill_payments (bill_id, user_id, period_month, amount_paid, paid_date, status, transaction_id)
-  values (p_bill_id, v_user_id, v_period, p_amount, current_date, 'paid', v_tx_id)
+  values (p_bill_id, v_user_id, v_period, p_amount, v_paid_date, 'paid', v_tx_id)
   on conflict (bill_id, period_month)
   do update set
     status = 'paid',
     amount_paid = p_amount,
-    paid_date = current_date,
+    paid_date = v_paid_date,
     transaction_id = v_tx_id;
 
   return v_tx_id;
@@ -377,9 +442,8 @@ $$ language plpgsql security definer;
 
 
 -- =========================================================
--- 13. ROW LEVEL SECURITY (RLS)
--- Wajib diaktifkan supaya user A gak bisa baca/edit data user B,
--- meskipun akses lewat REST API auto-generate Supabase.
+-- 8. ROW LEVEL SECURITY (RLS) BERPERFORMA TINGGI
+-- Menggunakan subquery (select auth.uid()) & TO authenticated
 -- =========================================================
 alter table accounts enable row level security;
 alter table categories enable row level security;
@@ -387,67 +451,75 @@ alter table transactions enable row level security;
 alter table transfers enable row level security;
 alter table bills enable row level security;
 alter table bill_payments enable row level security;
+alter table saving_goals enable row level security;
 alter table device_tokens enable row level security;
 
+-- Accounts
+drop policy if exists "Users manage own accounts" on accounts;
 create policy "Users manage own accounts" on accounts
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
+-- Categories
+drop policy if exists "Users manage own categories" on categories;
 create policy "Users manage own categories" on categories
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
+-- Transactions
+drop policy if exists "Users manage own transactions" on transactions;
 create policy "Users manage own transactions" on transactions
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
+-- Transfers
+drop policy if exists "Users manage own transfers" on transfers;
 create policy "Users manage own transfers" on transfers
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
+-- Bills
+drop policy if exists "Users manage own bills" on bills;
 create policy "Users manage own bills" on bills
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
+-- Bill Payments
+drop policy if exists "Users manage own bill_payments" on bill_payments;
 create policy "Users manage own bill_payments" on bill_payments
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
+-- Saving Goals
+drop policy if exists "Users manage own saving_goals" on saving_goals;
+create policy "Users manage own saving_goals" on saving_goals
+  for all
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+-- Device Tokens
+drop policy if exists "Users manage own device_tokens" on device_tokens;
 create policy "Users manage own device_tokens" on device_tokens
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
--- exchange_rates sengaja TIDAK di-RLS karena data global (bukan milik user tertentu),
--- tapi tetap dibatasi: hanya bisa dibaca, insert cuma lewat Edge Function (service role)
+-- Exchange Rates (Global Public Read)
 alter table exchange_rates enable row level security;
+drop policy if exists "Anyone can read exchange rates" on exchange_rates;
 create policy "Anyone can read exchange rates" on exchange_rates
-  for select using (true);
-
-
--- =========================================================
--- SELESAI
--- =========================================================
--- Ringkasan apa yang barusan dibuat:
--- - 8 tabel inti
--- - 5 index buat performa query
--- - 2 trigger otomatis (updated_at, amount_idr)
--- - 4 view siap pakai (saldo, net worth, expense per kategori)
--- - 5 function siap dipanggil dari Edge Function / app
--- - RLS di semua tabel biar data user aman
-
--- =========================================================
--- PATCH: auto-isi user_id dari user yang sedang login
--- Jalankan file ini di Supabase SQL Editor SETELAH schema.sql
--- =========================================================
---
--- Alasan: semua tabel punya kolom `user_id uuid ... not null` TANPA
--- default value. Kalau app tidak mengirim user_id secara eksplisit saat
--- insert (dan repository yang sudah dibuat memang tidak mengirimnya),
--- insert akan gagal dengan error "null value in column user_id".
---
--- Perbaikan ini membuat kolom user_id otomatis terisi dengan
--- auth.uid() (id user yang sedang login lewat Supabase Auth) kalau
--- app tidak mengirim nilainya sendiri. Ini juga sekaligus mengunci:
--- app tidak akan pernah bisa insert data atas nama user lain, karena
--- nilainya diambil dari sesi login saat itu, bukan dari input app.
-
-alter table accounts alter column user_id set default auth.uid();
-alter table categories alter column user_id set default auth.uid();
-alter table transactions alter column user_id set default auth.uid();
-alter table transfers alter column user_id set default auth.uid();
-alter table bills alter column user_id set default auth.uid();
-alter table bill_payments alter column user_id set default auth.uid();
-alter table device_tokens alter column user_id set default auth.uid();
+  for select using (true);

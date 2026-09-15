@@ -98,14 +98,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 20),
 
                     // App Title
-                    const Text(
+                    Text(
                       'uank',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.5,
-                        color: AppColors.darkTextPrimary,
+                        color: context.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -114,9 +114,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ? 'Start managing your multi-currency finances'
                           : 'Sign in to your financial account',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.darkTextSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 36),
@@ -153,42 +153,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           TextFormField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              color: context.textPrimary,
                             ),
                             decoration: InputDecoration(
                               labelText: 'Email',
-                              labelStyle: const TextStyle(
-                                color: AppColors.darkTextSecondary,
+                              labelStyle: TextStyle(
+                                color: context.textSecondary,
                                 fontSize: 13,
                               ),
-                              prefixIcon: const Icon(
+                              prefixIcon: Icon(
                                 Icons.email_outlined,
                                 size: 20,
-                                color: AppColors.darkTextSecondary,
+                                color: context.textSecondary,
                               ),
                               filled: true,
-                              fillColor: AppColors.darkCardBg,
+                              fillColor: context.inputBg,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 14,
                               ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: AppColors.darkCardBorder),
+                                borderSide: BorderSide(
+                                    color: context.cardBorder),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: AppColors.darkCardBorder),
+                                borderSide: BorderSide(
+                                    color: context.cardBorder),
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: AppColors.primary, width: 1.2),
+                                borderRadius: const BorderRadius.all(Radius.circular(16)),
+                                borderSide: BorderSide(
+                                  color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                                  width: 1.2,
+                                ),
                               ),
                             ),
                             validator: (value) {
@@ -207,21 +209,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           TextFormField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              color: context.textPrimary,
                             ),
                             decoration: InputDecoration(
                               labelText: 'Password',
-                              labelStyle: const TextStyle(
-                                color: AppColors.darkTextSecondary,
+                              labelStyle: TextStyle(
+                                color: context.textSecondary,
                                 fontSize: 13,
                               ),
-                              prefixIcon: const Icon(
+                              prefixIcon: Icon(
                                 Icons.lock_outline_rounded,
                                 size: 20,
-                                color: AppColors.darkTextSecondary,
+                                color: context.textSecondary,
                               ),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -229,31 +231,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       ? Icons.visibility_off_outlined
                                       : Icons.visibility_outlined,
                                   size: 18,
-                                  color: AppColors.darkTextSecondary,
+                                  color: context.textSecondary,
                                 ),
                                 onPressed: () => setState(() =>
                                     _obscurePassword = !_obscurePassword),
                               ),
                               filled: true,
-                              fillColor: AppColors.darkCardBg,
+                              fillColor: context.inputBg,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 14,
                               ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: AppColors.darkCardBorder),
+                                borderSide: BorderSide(
+                                    color: context.cardBorder),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: AppColors.darkCardBorder),
+                                borderSide: BorderSide(
+                                    color: context.cardBorder),
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: AppColors.primary, width: 1.2),
+                                borderRadius: const BorderRadius.all(Radius.circular(16)),
+                                borderSide: BorderSide(
+                                  color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                                  width: 1.2,
+                                ),
                               ),
                             ),
                             validator: (value) {
@@ -319,9 +323,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           _isSignUp
                               ? 'Already have an account? '
                               : "Don't have an account? ",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: AppColors.darkTextSecondary,
+                            color: context.textSecondary,
                           ),
                         ),
                         GestureDetector(
@@ -331,10 +335,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           }),
                           child: Text(
                             _isSignUp ? 'Sign In' : 'Sign Up Now',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.primaryLight,
+                              color: context.accentLinkColor,
                             ),
                           ),
                         ),

@@ -20,6 +20,9 @@ class SavingGoalRepository {
       'color': goal.color,
       'is_completed': goal.isCompleted,
     };
+    if (goal.accountId != null && goal.accountId!.isNotEmpty) {
+      payload['account_id'] = goal.accountId;
+    }
     if (goal.targetDate != null && goal.targetDate!.isNotEmpty) {
       payload['target_date'] = goal.targetDate;
     }
@@ -37,6 +40,9 @@ class SavingGoalRepository {
       'is_completed': goal.isCompleted || goal.currentAmount >= goal.targetAmount,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
+    if (goal.accountId != null) {
+      payload['account_id'] = goal.accountId!.isEmpty ? null : goal.accountId;
+    }
     if (goal.targetDate != null) {
       payload['target_date'] = goal.targetDate!.isEmpty ? null : goal.targetDate;
     }

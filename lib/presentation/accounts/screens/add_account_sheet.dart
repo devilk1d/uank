@@ -72,11 +72,11 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(22, 20, 22, 20 + bottomInset),
-      decoration: const BoxDecoration(
-        color: AppColors.darkCardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border(
-          top: BorderSide(color: AppColors.darkCardBorder, width: 1.5),
+          top: BorderSide(color: context.cardBorder, width: 1.5),
         ),
       ),
       child: Form(
@@ -91,7 +91,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.darkTextMuted,
+                  color: context.textMuted.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -99,60 +99,60 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             const SizedBox(height: 18),
 
             // Header Title
-            const Text(
+            Text(
               'Add New Account',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: AppColors.darkTextPrimary,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Funding source for balance tracking (Bank, E-Wallet, or Cash)',
               style: TextStyle(
                 fontSize: 12,
-                color: AppColors.darkTextSecondary,
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 20),
 
             // Account Name Field
-            const Text(
+            Text(
               'Account Name',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.darkTextSecondary,
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 8),
             TextFormField(
               controller: _nameController,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.textPrimary,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
               decoration: InputDecoration(
                 hintText: 'e.g. Chase Bank, Maybank, Cash Wallet',
-                hintStyle: const TextStyle(
-                  color: AppColors.darkTextMuted,
+                hintStyle: TextStyle(
+                  color: context.textMuted,
                   fontSize: 14,
                 ),
                 filled: true,
-                fillColor: AppColors.darkCardBg,
+                fillColor: context.inputBg,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 14,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                  borderSide: BorderSide(color: context.cardBorder),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                  borderSide: BorderSide(color: context.cardBorder),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -168,12 +168,12 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             const SizedBox(height: 16),
 
             // Account Type Selector
-            const Text(
+            Text(
               'Account Type',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.darkTextSecondary,
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 8),
@@ -213,12 +213,12 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Initial Balance',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.darkTextSecondary,
+                          color: context.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -226,36 +226,36 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                         controller: _initialBalanceController,
                         keyboardType: TextInputType.number,
                         inputFormatters: [CurrencyInputFormatter()],
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: context.textPrimary,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                         decoration: InputDecoration(
                           hintText: '0',
-                          hintStyle: const TextStyle(
-                            color: AppColors.darkTextMuted,
+                          hintStyle: TextStyle(
+                            color: context.textMuted,
                             fontSize: 14,
                           ),
                           prefixText: _selectedCurrency == 'IDR' ? 'Rp  ' : 'RM  ',
-                          prefixStyle: const TextStyle(
-                            color: AppColors.primary,
+                          prefixStyle: TextStyle(
+                            color: context.accentLinkColor,
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                           ),
                           filled: true,
-                          fillColor: AppColors.darkCardBg,
+                          fillColor: context.inputBg,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 14,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                            borderSide: BorderSide(color: context.cardBorder),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                            borderSide: BorderSide(color: context.cardBorder),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -276,12 +276,12 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Currency',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.darkTextSecondary,
+                          color: context.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -289,9 +289,9 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                         height: 50,
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: AppColors.darkCardBg,
+                          color: context.inputBg,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.darkCardBorder),
+                          border: Border.all(color: context.cardBorder),
                         ),
                         child: Row(
                           children: [
@@ -364,7 +364,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-              color: isSelected ? Colors.black : AppColors.darkTextSecondary,
+              color: isSelected ? Colors.black : context.textSecondary,
             ),
           ),
         ),
@@ -394,23 +394,33 @@ class _TypeChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.darkCardBg,
+            color: isSelected
+                ? (context.isDark ? AppColors.primary.withValues(alpha: 0.15) : const Color(0xFF15803D).withValues(alpha: 0.1))
+                : context.inputBg,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.darkCardBorder,
+              color: isSelected
+                  ? (context.isDark ? AppColors.primary : const Color(0xFF15803D))
+                  : context.cardBorder,
               width: isSelected ? 1.5 : 1,
             ),
           ),
           child: Column(
             children: [
-              Icon(icon, size: 18, color: isSelected ? AppColors.primaryLight : AppColors.darkTextSecondary),
+              Icon(
+                icon,
+                size: 18,
+                color: isSelected
+                    ? (context.isDark ? AppColors.primaryLight : const Color(0xFF15803D))
+                    : context.textSecondary,
+              ),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.darkTextPrimary : AppColors.darkTextSecondary,
+                  color: isSelected ? context.textPrimary : context.textSecondary,
                 ),
               ),
             ],

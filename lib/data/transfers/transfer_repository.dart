@@ -6,7 +6,8 @@ class TransferRepository {
     final rows = await supabase
         .from('transfers')
         .select()
-        .order('transfer_date', ascending: false);
+        .order('transfer_date', ascending: false)
+        .order('created_at', ascending: false);
     return rows.map((row) => Transfer.fromJson(row)).toList();
   }
 

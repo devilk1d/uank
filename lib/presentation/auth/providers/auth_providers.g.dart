@@ -82,3 +82,55 @@ final class IsLoggedInProvider extends $FunctionalProvider<bool, bool, bool>
 }
 
 String _$isLoggedInHash() => r'a0353f4141f8c26c5702b61288211510312a3a7f';
+
+@ProviderFor(UserProfile)
+final userProfileProvider = UserProfileProvider._();
+
+final class UserProfileProvider
+    extends $NotifierProvider<UserProfile, UserProfileData?> {
+  UserProfileProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'userProfileProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$userProfileHash();
+
+  @$internal
+  @override
+  UserProfile create() => UserProfile();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(UserProfileData? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<UserProfileData?>(value),
+    );
+  }
+}
+
+String _$userProfileHash() => r'463854b4d71af3363b1ab3b4e605d2a9baf671fb';
+
+abstract class _$UserProfile extends $Notifier<UserProfileData?> {
+  UserProfileData? build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<UserProfileData?, UserProfileData?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<UserProfileData?, UserProfileData?>,
+              UserProfileData?,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

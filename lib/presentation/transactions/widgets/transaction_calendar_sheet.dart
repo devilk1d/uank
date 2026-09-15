@@ -193,11 +193,11 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
         (_tempEndDate == null || _isSameDay(_tempStartDate!, _tempEndDate!));
 
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.darkCardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border(
-          top: BorderSide(color: AppColors.darkCardBorder, width: 1.5),
+          top: BorderSide(color: context.cardBorder, width: 1.5),
         ),
       ),
       padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomInset),
@@ -211,7 +211,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.darkTextMuted,
+                color: context.textMuted,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -237,14 +237,14 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF22242D),
+                    color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.darkCardBorder),
+                    border: Border.all(color: context.cardBorder),
                   ),
                   child: Icon(
                     _isPickerMode ? Icons.arrow_back_rounded : Icons.close_rounded,
                     size: 18,
-                    color: AppColors.darkTextPrimary,
+                    color: context.textPrimary,
                   ),
                 ),
               ),
@@ -255,7 +255,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.chevron_left_rounded, size: 22, color: AppColors.darkTextSecondary),
+                      icon: Icon(Icons.chevron_left_rounded, size: 22, color: context.textSecondary),
                       onPressed: _prevMonth,
                       visualDensity: VisualDensity.compact,
                     ),
@@ -270,9 +270,9 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF22242D),
+                          color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.darkCardBorder),
+                          border: Border.all(color: context.cardBorder),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -282,7 +282,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.darkTextPrimary,
+                                color: context.textPrimary,
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -296,7 +296,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.chevron_right_rounded, size: 22, color: AppColors.darkTextSecondary),
+                      icon: Icon(Icons.chevron_right_rounded, size: 22, color: context.textSecondary),
                       onPressed: _nextMonth,
                       visualDensity: VisualDensity.compact,
                     ),
@@ -308,7 +308,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.chevron_left_rounded, size: 22, color: AppColors.darkTextSecondary),
+                      icon: Icon(Icons.chevron_left_rounded, size: 22, color: context.textSecondary),
                       onPressed: _prevYear,
                       visualDensity: VisualDensity.compact,
                     ),
@@ -319,10 +319,10 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF22242D),
+                          color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _isYearListMode ? AppColors.primary : AppColors.darkCardBorder,
+                            color: _isYearListMode ? AppColors.primary : context.cardBorder,
                           ),
                         ),
                         child: Row(
@@ -333,7 +333,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.darkTextPrimary,
+                                color: context.textPrimary,
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -349,7 +349,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.chevron_right_rounded, size: 22, color: AppColors.darkTextSecondary),
+                      icon: Icon(Icons.chevron_right_rounded, size: 22, color: context.textSecondary),
                       onPressed: _nextYear,
                       visualDensity: VisualDensity.compact,
                     ),
@@ -366,9 +366,9 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF22242D),
+                      color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.darkCardBorder),
+                      border: Border.all(color: context.cardBorder),
                     ),
                     child: Text(
                       'All Month',
@@ -391,9 +391,9 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF22242D),
+                      color: context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.darkCardBorder),
+                      border: Border.all(color: context.cardBorder),
                     ),
                     child: Text(
                       'Done',
@@ -601,7 +601,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                                         ? AppColors.primary
                                         : isInBetween
                                             ? Colors.transparent
-                                            : const Color(0xFF22242D),
+                                            : (context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground),
                                     border: (isToday && !isStart && !isEnd && !isSingle && !isInBetween)
                                         ? Border.all(color: AppColors.primary.withValues(alpha: 0.6), width: 1.2)
                                         : null,
@@ -630,12 +630,12 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                                           color: (isStart || isEnd || isSingle)
                                               ? Colors.black
                                               : isToday
-                                                  ? AppColors.primaryLight
+                                                  ? (context.isDark ? AppColors.primaryLight : const Color(0xFF15803D))
                                                   : isInBetween
                                                       ? Colors.white
                                                       : hasActivity
-                                                          ? AppColors.darkTextPrimary
-                                                          : AppColors.darkTextSecondary,
+                                                          ? context.textPrimary
+                                                          : context.textSecondary,
                                         ),
                                       ),
                                       if (hasActivity && !isStart && !isEnd && !isSingle) ...[
@@ -669,9 +669,9 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E2028),
+                  color: context.isDark ? const Color(0xFF1E2028) : AppColors.lightBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.darkCardBorder),
+                  border: Border.all(color: context.cardBorder),
                 ),
                 child: Row(
                   children: [
@@ -686,7 +686,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.darkTextPrimary,
+                              color: context.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -699,7 +699,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                                     : 'No recorded activity in this range',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
-                                  color: count > 0 ? AppColors.primary : AppColors.darkTextMuted,
+                                  color: count > 0 ? AppColors.primary : context.textMuted,
                                 ),
                               );
                             },
@@ -732,9 +732,9 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E2028),
+                  color: context.isDark ? const Color(0xFF1E2028) : AppColors.lightBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.darkCardBorder),
+                  border: Border.all(color: context.cardBorder),
                 ),
                 child: Row(
                   children: [
@@ -747,7 +747,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.darkTextPrimary,
+                              color: context.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -759,7 +759,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                                 : 'No recorded activity on this day',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
-                              color: _hasActivity(_tempStartDate!) ? AppColors.primary : AppColors.darkTextMuted,
+                              color: _hasActivity(_tempStartDate!) ? AppColors.primary : context.textMuted,
                             ),
                           ),
                         ],
@@ -790,9 +790,9 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E2028),
+                  color: context.isDark ? const Color(0xFF1E2028) : AppColors.lightBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.darkCardBorder),
+                  border: Border.all(color: context.cardBorder),
                 ),
                 child: Row(
                   children: [
@@ -805,7 +805,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.darkTextPrimary,
+                              color: context.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -813,7 +813,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                             'Tap to show all transactions without date filter',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
-                              color: AppColors.darkTextMuted,
+                              color: context.textMuted,
                             ),
                           ),
                         ],
@@ -893,10 +893,10 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
               decoration: BoxDecoration(
-                color: isCurrentSelectedMonth ? AppColors.primary : const Color(0xFF22242D),
+                color: isCurrentSelectedMonth ? AppColors.primary : (context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isCurrentSelectedMonth ? AppColors.primary : AppColors.darkCardBorder,
+                  color: isCurrentSelectedMonth ? AppColors.primary : context.cardBorder,
                 ),
                 boxShadow: isCurrentSelectedMonth
                     ? [
@@ -914,7 +914,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     fontWeight: isCurrentSelectedMonth ? FontWeight.w700 : FontWeight.w600,
-                    color: isCurrentSelectedMonth ? Colors.black : AppColors.darkTextPrimary,
+                    color: isCurrentSelectedMonth ? Colors.black : context.textPrimary,
                   ),
                 ),
               ),
@@ -942,7 +942,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.darkTextSecondary,
+                color: context.textSecondary,
               ),
             ),
           ),
@@ -970,10 +970,10 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
                   decoration: BoxDecoration(
-                    color: isSelectedYear ? AppColors.primary : const Color(0xFF22242D),
+                    color: isSelectedYear ? AppColors.primary : (context.isDark ? const Color(0xFF22242D) : AppColors.lightBackground),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isSelectedYear ? AppColors.primary : AppColors.darkCardBorder,
+                      color: isSelectedYear ? AppColors.primary : context.cardBorder,
                     ),
                     boxShadow: isSelectedYear
                         ? [
@@ -991,7 +991,7 @@ class _TransactionCalendarSheetState extends State<TransactionCalendarSheet> {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: isSelectedYear ? FontWeight.w700 : FontWeight.w600,
-                        color: isSelectedYear ? Colors.black : AppColors.darkTextPrimary,
+                        color: isSelectedYear ? Colors.black : context.textPrimary,
                       ),
                     ),
                   ),
@@ -1019,7 +1019,7 @@ class _WeekdayLabel extends StatelessWidget {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColors.darkTextSecondary,
+            color: context.textSecondary,
           ),
         ),
       ),

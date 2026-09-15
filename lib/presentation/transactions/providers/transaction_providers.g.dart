@@ -28,7 +28,7 @@ final class TransactionsProvider
         argument: null,
         retry: null,
         name: r'transactionsProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -48,7 +48,7 @@ final class TransactionsProvider
   }
 }
 
-String _$transactionsHash() => r'6165401ef02d3258f15ca22a2c8e31db1505df09';
+String _$transactionsHash() => r'13fad4da4af98431fdf783e12feaf495fd37839b';
 
 @ProviderFor(transactionsByAccount)
 final transactionsByAccountProvider = TransactionsByAccountFamily._();

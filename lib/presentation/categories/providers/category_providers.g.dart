@@ -26,7 +26,7 @@ final class CategoriesProvider
         argument: null,
         retry: null,
         name: r'categoriesProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -46,7 +46,7 @@ final class CategoriesProvider
   }
 }
 
-String _$categoriesHash() => r'12ff07b8f8fa62fc169a79e8e81f0c61b15e030f';
+String _$categoriesHash() => r'170b7f0ed764fe121f936234e998d6e72bfdc6d7';
 
 @ProviderFor(categoriesByType)
 final categoriesByTypeProvider = CategoriesByTypeFamily._();
@@ -65,7 +65,7 @@ final class CategoriesByTypeProvider
   }) : super(
          retry: null,
          name: r'categoriesByTypeProvider',
-         isAutoDispose: true,
+         isAutoDispose: false,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
@@ -103,7 +103,7 @@ final class CategoriesByTypeProvider
   }
 }
 
-String _$categoriesByTypeHash() => r'58092eb200eb9e55f37875a80e60a95216769ca1';
+String _$categoriesByTypeHash() => r'fa293253674e1732556d56c043c31f8d0fe82b07';
 
 final class CategoriesByTypeFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<List<Category>>, String> {
@@ -113,7 +113,7 @@ final class CategoriesByTypeFamily extends $Family
         name: r'categoriesByTypeProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
-        isAutoDispose: true,
+        isAutoDispose: false,
       );
 
   CategoriesByTypeProvider call(String type) =>

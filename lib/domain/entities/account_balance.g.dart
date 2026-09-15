@@ -13,6 +13,7 @@ _AccountBalance _$AccountBalanceFromJson(Map<String, dynamic> json) =>
       type: json['type'] as String,
       currency: json['currency'] as String,
       balance: json['balance'] as num,
+      isActive: json['is_active'] as bool? ?? true,
     );
 
 Map<String, dynamic> _$AccountBalanceToJson(_AccountBalance instance) =>
@@ -22,4 +23,5 @@ Map<String, dynamic> _$AccountBalanceToJson(_AccountBalance instance) =>
       'type': instance.type,
       'currency': instance.currency,
       'balance': instance.balance,
+      'is_active': instance.isActive,
     };

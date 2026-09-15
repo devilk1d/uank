@@ -5,7 +5,9 @@ import '../../../core/theme/app_background.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/entities/saving_goal.dart';
+import '../../accounts/providers/account_providers.dart';
 import '../providers/saving_goal_providers.dart';
+import '../utils/saving_goal_ui_helpers.dart';
 import '../widgets/deposit_saving_goal_dialog.dart';
 import 'add_saving_goal_sheet.dart';
 
@@ -20,62 +22,43 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
   int _selectedTabIndex = 0; // 0 = In Progress, 1 = Completed
   String _selectedCurrencyFilter = 'ALL'; // ALL, IDR, MYR
 
-  static const Map<String, IconData> _iconMap = {
-    'savings': Icons.savings_rounded,
-    'flight': Icons.flight_takeoff_rounded,
-    'laptop': Icons.laptop_mac_rounded,
-    'phone': Icons.phone_iphone_rounded,
-    'car': Icons.directions_car_rounded,
-    'home': Icons.home_rounded,
-    'shopping': Icons.shopping_bag_rounded,
-    'school': Icons.school_rounded,
-    'fitness': Icons.fitness_center_rounded,
-    'health': Icons.favorite_rounded,
-    'vacation': Icons.beach_access_rounded,
-    'celebration': Icons.celebration_rounded,
-  };
+  Color _parseHexColor(String hex) => SavingGoalUIHelper.parseColor(hex);
 
-  Color _parseHexColor(String hex) {
-    try {
-      final clean = hex.replaceAll('#', '');
-      return Color(int.parse('FF$clean', radix: 16));
-    } catch (_) {
-      return AppColors.primary;
-    }
-  }
-
-  IconData _getIconData(String iconKey) {
-    return _iconMap[iconKey] ?? Icons.savings_rounded;
-  }
+  IconData _getIconData(String iconKey) => SavingGoalUIHelper.getIconData(iconKey);
 
   @override
   Widget build(BuildContext context) {
     final goalsAsync = ref.watch(savingGoalsProvider);
+    final accountsAsync = ref.watch(accountsProvider);
+    final accounts = accountsAsync.asData?.value ?? [];
+    final accountsMap = {for (final a in accounts) a.id: a};
 
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
           child: RefreshIndicator(
-            color: AppColors.primary,
-            backgroundColor: AppColors.darkCardBg,
+            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+            backgroundColor: context.cardBg,
             onRefresh: () async {
               ref.invalidate(savingGoalsProvider);
+              ref.invalidate(accountsProvider);
               await ref.read(savingGoalsProvider.future);
             },
             child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
               children: [
                 // Header (Title & Add Goal CTA)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Saving Goals',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.5,
-                        color: AppColors.darkTextPrimary,
+                        color: context.textPrimary,
                       ),
                     ),
                     GestureDetector(
@@ -143,9 +126,9 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                             Container(
                               padding: const EdgeInsets.all(3),
                               decoration: BoxDecoration(
-                                color: AppColors.darkCardBg,
+                                color: context.cardBg,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: AppColors.darkCardBorder),
+                                border: Border.all(color: context.cardBorder),
                               ),
                               child: Row(
                                 children: [
@@ -159,9 +142,9 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                             Container(
                               padding: const EdgeInsets.all(3),
                               decoration: BoxDecoration(
-                                color: AppColors.darkCardBg,
+                                color: context.cardBg,
                                 borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: AppColors.darkCardBorder),
+                                border: Border.all(color: context.cardBorder),
                               ),
                               child: Row(
                                 children: ['ALL', 'IDR', 'MYR'].map((cur) {
@@ -171,7 +154,9 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: isSelected ? Colors.white.withValues(alpha: 0.12) : Colors.transparent,
+                                        color: isSelected
+                                            ? (context.isDark ? AppColors.primary.withValues(alpha: 0.18) : const Color(0xFF15803D).withValues(alpha: 0.1))
+                                            : Colors.transparent,
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(
@@ -179,7 +164,9 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w700,
-                                          color: isSelected ? AppColors.primary : AppColors.darkTextSecondary,
+                                          color: isSelected
+                                              ? (context.isDark ? AppColors.primary : const Color(0xFF15803D))
+                                              : context.textSecondary,
                                         ),
                                       ),
                                     ),
@@ -195,14 +182,16 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                         if (activeList.isEmpty)
                           _buildEmptyState()
                         else
-                          ...activeList.map((goal) => _buildGoalCard(goal)),
+                          ...activeList.map((goal) => _buildGoalCard(goal, accountsMap[goal.accountId]?.name)),
                       ],
                     );
                   },
-                  loading: () => const Center(
+                  loading: () => Center(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: CircularProgressIndicator(
+                        color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                      ),
                     ),
                   ),
                   error: (e, _) => Center(
@@ -212,10 +201,10 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                         children: [
                           const Icon(Icons.error_outline_rounded, size: 36, color: AppColors.red),
                           const SizedBox(height: 8),
-                          Text('Failed to load goals: $e', style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 12)),
+                          Text('Failed to load goals: $e', style: TextStyle(color: context.textSecondary, fontSize: 12)),
                           TextButton(
                             onPressed: () => ref.invalidate(savingGoalsProvider),
-                            child: const Text('Retry', style: TextStyle(color: AppColors.primaryLight)),
+                            child: Text('Retry', style: TextStyle(color: context.accentLinkColor)),
                           ),
                         ],
                       ),
@@ -246,12 +235,12 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.darkCardBg,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.darkCardBorder),
+        border: Border.all(color: context.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha: context.isDark ? 0.3 : 0.06),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -263,16 +252,16 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.primaryLight),
-                  SizedBox(width: 6),
+                  Icon(Icons.auto_awesome_rounded, size: 16, color: context.accentIconColor),
+                  const SizedBox(width: 6),
                   Text(
                     'Overall Savings Progress',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.darkTextSecondary,
+                      color: context.textSecondary,
                     ),
                   ),
                 ],
@@ -303,7 +292,7 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
               currency: 'IDR',
               saved: idrSaved,
               target: idrTarget,
-              accentColor: AppColors.primary,
+              accentColor: context.isDark ? AppColors.primary : const Color(0xFF15803D),
             ),
             if (myrGoals.isNotEmpty) const SizedBox(height: 12),
           ],
@@ -318,11 +307,11 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
             ),
 
           if (goals.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 'Set your first saving goal to visualize your financial milestones.',
-                style: TextStyle(color: AppColors.darkTextMuted, fontSize: 12),
+                style: TextStyle(color: context.textMuted, fontSize: 12),
               ),
             ),
         ],
@@ -348,18 +337,18 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
           children: [
             Text(
               '$symbol ${CurrencyInputFormatter.format(saved)}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: context.textPrimary,
               ),
             ),
             Text(
               'of $symbol ${CurrencyInputFormatter.format(target)} (${(progress * 100).toStringAsFixed(1)}%)',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.darkTextSecondary,
+                color: context.textSecondary,
               ),
             ),
           ],
@@ -370,7 +359,7 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
           child: LinearProgressIndicator(
             value: progress,
             minHeight: 6,
-            backgroundColor: Colors.white.withValues(alpha: 0.08),
+            backgroundColor: context.cardBorder,
             valueColor: AlwaysStoppedAnimation<Color>(accentColor),
           ),
         ),
@@ -393,15 +382,16 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: isSelected ? Colors.black : AppColors.darkTextSecondary,
+            color: isSelected ? Colors.black : context.textSecondary,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildGoalCard(SavingGoal goal) {
+  Widget _buildGoalCard(SavingGoal goal, [String? accountName]) {
     final accentColor = _parseHexColor(goal.color);
+    final contrastAccent = SavingGoalUIHelper.getContrastColor(accentColor, context);
     final iconData = _getIconData(goal.icon);
     final isIdr = goal.currency == 'IDR';
     final symbol = isIdr ? 'Rp' : 'RM';
@@ -430,7 +420,7 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.darkCardBg,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: isCompleted ? AppColors.teal.withValues(alpha: 0.5) : accentColor.withValues(alpha: 0.35),
@@ -438,7 +428,7 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: accentColor.withValues(alpha: 0.08),
+            color: accentColor.withValues(alpha: context.isDark ? 0.08 : 0.04),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -460,11 +450,11 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                   shape: BoxShape.circle,
                   border: Border.all(color: accentColor.withValues(alpha: 0.4)),
                 ),
-                child: Icon(iconData, size: 22, color: accentColor),
+                child: Icon(iconData, size: 22, color: contrastAccent),
               ),
               const SizedBox(width: 12),
 
-              // Title & Deadline / Currency
+              // Title & Deadline / Currency / Account
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,10 +464,10 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                         Flexible(
                           child: Text(
                             goal.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                              color: context.textPrimary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -487,44 +477,70 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color: context.inputBg,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             goal.currency,
-                            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.darkTextSecondary),
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: context.textSecondary),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 3),
-                    if (deadlineText != null)
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today_rounded, size: 11, color: isCompleted ? AppColors.teal : AppColors.darkTextMuted),
+                    Row(
+                      children: [
+                        if (deadlineText != null) ...[
+                          Icon(Icons.calendar_today_rounded, size: 11, color: isCompleted ? AppColors.teal : context.textMuted),
                           const SizedBox(width: 4),
                           Text(
                             deadlineText,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
-                              color: isCompleted ? AppColors.teal : AppColors.darkTextSecondary,
+                              color: isCompleted ? AppColors.teal : context.textSecondary,
+                            ),
+                          ),
+                        ] else
+                          Text(
+                            'No deadline set',
+                            style: TextStyle(fontSize: 11, color: context.textMuted),
+                          ),
+                        if (accountName != null) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            width: 3,
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: context.textMuted,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(Icons.account_balance_wallet_outlined, size: 11, color: context.textMuted),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              accountName,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: context.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
-                      )
-                    else
-                      const Text(
-                        'No deadline set',
-                        style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted),
-                      ),
+                      ],
+                    ),
                   ],
                 ),
               ),
 
               // Edit Action
               IconButton(
-                icon: const Icon(Icons.tune_rounded, size: 18, color: AppColors.darkTextSecondary),
+                icon: Icon(Icons.tune_rounded, size: 18, color: context.textSecondary),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 onPressed: () => AddSavingGoalSheet.show(context, goalToEdit: goal),
@@ -543,18 +559,18 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                 children: [
                   Text(
                     '$symbol ${CurrencyInputFormatter.format(goal.currentAmount)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: context.textPrimary,
                     ),
                   ),
                   Text(
                     'Target: $symbol ${CurrencyInputFormatter.format(goal.targetAmount)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.darkTextSecondary,
+                      color: context.textSecondary,
                     ),
                   ),
                 ],
@@ -564,10 +580,10 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                 decoration: BoxDecoration(
                   color: isCompleted
                       ? AppColors.teal.withValues(alpha: 0.18)
-                      : accentColor.withValues(alpha: 0.15),
+                      : (context.isDark ? accentColor.withValues(alpha: 0.15) : const Color(0xFFF1F5F9)),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: isCompleted ? AppColors.teal : accentColor.withValues(alpha: 0.4),
+                    color: isCompleted ? AppColors.teal : (context.isDark ? accentColor.withValues(alpha: 0.4) : context.cardBorder),
                   ),
                 ),
                 child: Text(
@@ -575,7 +591,7 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: isCompleted ? AppColors.teal : accentColor,
+                    color: isCompleted ? AppColors.teal : contrastAccent,
                   ),
                 ),
               ),
@@ -589,7 +605,7 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              backgroundColor: context.cardBorder,
               valueColor: AlwaysStoppedAnimation<Color>(
                 isCompleted ? AppColors.teal : accentColor,
               ),
@@ -603,16 +619,16 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
             height: 40,
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                foregroundColor: context.textPrimary,
+                side: BorderSide(color: context.cardBorder),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                backgroundColor: Colors.white.withValues(alpha: 0.03),
+                backgroundColor: context.inputBg,
               ),
               onPressed: () => DepositSavingGoalDialog.show(context, goal),
               icon: Icon(
                 Icons.swap_vert_rounded,
                 size: 16,
-                color: isCompleted ? AppColors.teal : AppColors.primaryLight,
+                color: isCompleted ? AppColors.teal : context.accentIconColor,
               ),
               label: Text(
                 isCompleted ? 'Manage Funds' : '+ Add / Withdraw Funds',
@@ -639,26 +655,26 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
               ),
-              child: const Icon(Icons.savings_outlined, size: 30, color: AppColors.primaryLight),
+              child: Icon(Icons.savings_outlined, size: 30, color: context.accentIconColor),
             ),
             const SizedBox(height: 14),
             Text(
               _selectedTabIndex == 0
                   ? 'No active saving goals yet'
                   : 'No completed goals yet',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.darkTextPrimary,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Set a new goal and start saving towards what matters most!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: AppColors.darkTextSecondary,
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 18),

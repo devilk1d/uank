@@ -16,54 +16,66 @@ class ActivityScreen extends ConsumerWidget {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
-            children: [
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Activity',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      color: AppColors.darkTextPrimary,
+          child: RefreshIndicator(
+            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+            backgroundColor: context.cardBg,
+            onRefresh: () async {
+              ref.invalidate(transactionsProvider);
+              await ref.read(transactionsProvider.future);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Activity',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                transactionsAsync.when(
+                  data: (transactions) => transactions.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 60),
+                            child: Text(
+                              'No activity recorded yet.',
+                              style: TextStyle(color: context.textSecondary),
+                            ),
+                          ),
+                        )
+                      : Column(
+                          children: transactions
+                              .map((t) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: _ActivityItem(transaction: t),
+                                  ))
+                              .toList(),
+                        ),
+                  loading: () => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 60),
+                      child: CircularProgressIndicator(),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              transactionsAsync.when(
-                data: (transactions) => transactions.isEmpty
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.only(top: 60),
-                          child: Text(
-                            'No transactions yet',
-                            style: TextStyle(color: AppColors.darkTextSecondary),
-                          ),
-                        ),
-                      )
-                    : Column(
-                        children: transactions
-                            .map((t) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: _ActivityCard(transaction: t),
-                                ))
-                            .toList(),
-                      ),
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 60),
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                  error: (e, _) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 60),
+                      child: Text('Error: $e', style: const TextStyle(color: AppColors.red)),
+                    ),
                   ),
                 ),
-                error: (e, _) => Center(
-                  child: Text('$e', style: const TextStyle(color: AppColors.red)),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -71,8 +83,9 @@ class ActivityScreen extends ConsumerWidget {
   }
 }
 
-class _ActivityCard extends StatelessWidget {
-  const _ActivityCard({required this.transaction});
+class _ActivityItem extends StatelessWidget {
+  const _ActivityItem({required this.transaction});
+
   final Transaction transaction;
 
   @override
@@ -82,55 +95,60 @@ class _ActivityCard extends StatelessWidget {
     return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: (isExpense ? AppColors.primary : AppColors.green)
-                      .withValues(alpha: 0.15),
-                ),
-                child: Icon(
-                  isExpense ? Icons.arrow_outward_rounded : Icons.arrow_downward_rounded,
-                  size: 18,
-                  color: isExpense ? AppColors.primaryLight : AppColors.green,
-                ),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: (isExpense ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.15),
+              border: Border.all(
+                color: (isExpense ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.3),
               ),
-              const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    transaction.description ?? 'Transaction',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkTextPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    transaction.type.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.darkTextSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
+            child: Icon(
+              isExpense ? Icons.arrow_outward_rounded : Icons.arrow_downward_rounded,
+              size: 18,
+              color: isExpense ? AppColors.red : (context.isDark ? AppColors.primaryLight : const Color(0xFF059669)),
+            ),
           ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaction.description ?? 'Transaction',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  transaction.type.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
           Text(
-            '${isExpense ? '-' : '+'}\$${transaction.amount}',
+            '${isExpense ? '-' : '+'}${transaction.amount}',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: isExpense ? AppColors.darkTextPrimary : AppColors.green,
+              color: isExpense ? AppColors.red : context.incomeColor,
             ),
           ),
         ],

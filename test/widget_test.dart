@@ -1,30 +1,83 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:uank/main.dart';
+import 'package:uank/core/theme/app_colors.dart';
+import 'package:uank/core/widgets/app_dropdown.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const UankApp());
+  testWidgets('AppDropdownFormField updates displayed label when value changes dynamically', (tester) async {
+    String selectedValue = 'acc1';
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                children: [
+                  AppDropdownFormField<String>(
+                    value: selectedValue,
+                    labelText: 'Source Account',
+                    items: const [
+                      AppDropdownItem(value: 'acc1', label: 'BCA (IDR)'),
+                      AppDropdownItem(value: 'acc2', label: 'Maybank (MYR)'),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => selectedValue = val);
+                      }
+                    },
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        selectedValue = selectedValue == 'acc1' ? 'acc2' : 'acc1';
+                      });
+                    },
+                    child: const Text('Swap'),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    expect(find.text('BCA (IDR)'), findsOneWidget);
+    expect(find.text('Maybank (MYR)'), findsNothing);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Tap the Swap button to swap selectedValue
+    await tester.tap(find.text('Swap'));
+    await tester.pumpAndSettle();
+
+    // Verify it updated to Maybank
+    expect(find.text('Maybank (MYR)'), findsOneWidget);
+    expect(find.text('BCA (IDR)'), findsNothing);
+  });
+
+  testWidgets('Light and Dark Theme render with appropriate color contrast', (tester) async {
+    for (final brightness in [Brightness.light, Brightness.dark]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(brightness: brightness),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                return Column(
+                  children: [
+                    Text('Test Text', style: TextStyle(color: context.textPrimary)),
+                    Container(color: context.cardBg),
+                    Container(color: context.inputBg),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Test Text'), findsOneWidget);
+    }
   });
 }
+

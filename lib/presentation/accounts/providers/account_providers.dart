@@ -11,14 +11,14 @@ part 'account_providers.g.dart';
 
 /// Daftar akun mentah (dari tabel `accounts`), dipakai di layar
 /// tambah/edit akun.
-@riverpod
+@Riverpod(keepAlive: true)
 Future<List<Account>> accounts(Ref ref) {
   final repo = ref.watch(accountRepositoryProvider);
   return repo.getAll();
 }
 
 /// Saldo tiap akun (dari VIEW `account_balances`), dipakai di Dashboard.
-@riverpod
+@Riverpod(keepAlive: true)
 Future<List<AccountBalance>> accountBalances(Ref ref) {
   final repo = ref.watch(accountRepositoryProvider);
   return repo.getBalances();

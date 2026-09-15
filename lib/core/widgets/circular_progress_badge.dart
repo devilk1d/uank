@@ -8,19 +8,20 @@ class CircularProgressBadge extends StatelessWidget {
     required this.percentage,
     this.size = 54,
     this.strokeWidth = 4.5,
-    this.progressColor = AppColors.primary,
+    this.progressColor,
     this.trackColor,
   });
 
   final double percentage; // 0.0 to 1.0 (e.g. 0.56 for 56%)
   final double size;
   final double strokeWidth;
-  final Color progressColor;
+  final Color? progressColor;
   final Color? trackColor;
 
   @override
   Widget build(BuildContext context) {
     final displayPercent = (percentage * 100).toInt();
+    final effectiveProgressColor = progressColor ?? (context.isDark ? AppColors.primary : const Color(0xFF15803D));
 
     return SizedBox(
       width: size,
@@ -29,8 +30,8 @@ class CircularProgressBadge extends StatelessWidget {
         painter: _CircularProgressPainter(
           progress: percentage.clamp(0.0, 1.0),
           strokeWidth: strokeWidth,
-          progressColor: progressColor,
-          trackColor: trackColor ?? AppColors.darkCardBorder.withValues(alpha: 0.6),
+          progressColor: effectiveProgressColor,
+          trackColor: trackColor ?? (context.isDark ? AppColors.darkCardBorder.withValues(alpha: 0.6) : AppColors.lightCardBorder.withValues(alpha: 0.8)),
         ),
         child: Center(
           child: Text(
@@ -38,7 +39,7 @@ class CircularProgressBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: size * 0.24,
               fontWeight: FontWeight.w700,
-              color: AppColors.darkTextPrimary,
+              color: context.textPrimary,
             ),
           ),
         ),

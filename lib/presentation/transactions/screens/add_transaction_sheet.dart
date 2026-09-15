@@ -153,12 +153,23 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       }
     }
 
+    // Auto-resolve currency on editing based on account
+    if (isEditing && _selectedAccountId != null) {
+      final allAccounts = accountsAsync.asData?.value;
+      if (allAccounts != null) {
+        final currentAcc = allAccounts.where((a) => a.id == _selectedAccountId).firstOrNull;
+        if (currentAcc != null && _selectedCurrency != currentAcc.currency) {
+          _selectedCurrency = currentAcc.currency;
+        }
+      }
+    }
+
     return Container(
       padding: EdgeInsets.fromLTRB(22, 20, 22, 20 + bottomInset),
-      decoration: const BoxDecoration(
-        color: AppColors.darkCardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        border: Border(top: BorderSide(color: AppColors.darkCardBorder, width: 1.5)),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border(top: BorderSide(color: context.cardBorder, width: 1.5)),
       ),
       child: Form(
         key: _formKey,
@@ -173,7 +184,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.darkTextMuted,
+                    color: context.textMuted,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -183,10 +194,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               // Title
               Text(
                 isEditing ? 'Edit Transaction' : 'Record Transaction',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.darkTextPrimary,
+                  color: context.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -196,9 +207,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 height: 48,
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: AppColors.darkCardBg,
+                  color: context.inputBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.darkCardBorder),
+                  border: Border.all(color: context.cardBorder),
                 ),
                 child: Row(
                   children: [
@@ -239,39 +250,39 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Amount',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
                           ),
                           const SizedBox(height: 6),
                           TextFormField(
                             controller: _amountController,
                             keyboardType: TextInputType.number,
                             inputFormatters: [CurrencyInputFormatter()],
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              color: context.textPrimary,
                             ),
                             decoration: InputDecoration(
                               hintText: '0',
                               prefixText: _selectedCurrency == 'IDR' ? 'Rp ' : 'RM ',
-                              prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary),
-                              hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
+                              prefixStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: context.accentLinkColor),
+                              hintStyle: TextStyle(color: context.textMuted, fontSize: 14),
                               filled: true,
-                              fillColor: AppColors.darkCardBg,
+                              fillColor: context.inputBg,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                                borderSide: BorderSide(color: context.cardBorder),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                                borderSide: BorderSide(color: context.cardBorder),
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                                borderRadius: const BorderRadius.all(Radius.circular(16)),
+                                borderSide: BorderSide(color: context.isDark ? AppColors.primary : const Color(0xFF15803D), width: 1.2),
                               ),
                             ),
                             validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
@@ -285,18 +296,18 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Currency',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
                           ),
                           const SizedBox(height: 6),
                           Container(
                             height: 50,
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: AppColors.darkCardBg,
+                              color: context.inputBg,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.darkCardBorder),
+                              border: Border.all(color: context.cardBorder),
                             ),
                             child: Row(
                               children: [
@@ -305,8 +316,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                                     onTap: () {
                                       setState(() {
                                         _selectedCurrency = 'IDR';
-                                        final match = accounts.where((a) => a.currency == 'IDR').firstOrNull;
-                                        if (match != null) _selectedAccountId = match.id;
+                                        final matching = accounts.where((a) => a.currency == 'IDR').toList();
+                                        if (_selectedAccountId == null || !matching.any((a) => a.id == _selectedAccountId)) {
+                                          _selectedAccountId = matching.firstOrNull?.id;
+                                        }
                                       });
                                     },
                                     child: Container(
@@ -320,7 +333,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w700,
-                                          color: _selectedCurrency == 'IDR' ? Colors.black : AppColors.darkTextSecondary,
+                                          color: _selectedCurrency == 'IDR' ? Colors.black : context.textSecondary,
                                         ),
                                       ),
                                     ),
@@ -331,8 +344,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                                     onTap: () {
                                       setState(() {
                                         _selectedCurrency = 'MYR';
-                                        final match = accounts.where((a) => a.currency == 'MYR').firstOrNull;
-                                        if (match != null) _selectedAccountId = match.id;
+                                        final matching = accounts.where((a) => a.currency == 'MYR').toList();
+                                        if (_selectedAccountId == null || !matching.any((a) => a.id == _selectedAccountId)) {
+                                          _selectedAccountId = matching.firstOrNull?.id;
+                                        }
                                       });
                                     },
                                     child: Container(
@@ -346,7 +361,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w700,
-                                          color: _selectedCurrency == 'MYR' ? Colors.black : AppColors.darkTextSecondary,
+                                          color: _selectedCurrency == 'MYR' ? Colors.black : context.textSecondary,
                                         ),
                                       ),
                                     ),
@@ -365,25 +380,37 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Account Selector Dropdown
+              // Account Selector Dropdown - Filtered by selected currency
               accountsAsync.when(
                 data: (accounts) {
-                  if (accounts.isEmpty) {
-                    return const Text('No active accounts found.', style: TextStyle(color: AppColors.orange));
+                  final matchingAccounts = accounts.where((a) => a.currency == _selectedCurrency).toList();
+
+                  // Auto-resolve selected account if not set or invalid for this currency
+                  if (_selectedAccountId == null || !matchingAccounts.any((a) => a.id == _selectedAccountId)) {
+                    _selectedAccountId = matchingAccounts.firstOrNull?.id;
                   }
-                  
-                  // Initialize or validate selected account
-                  if (_selectedAccountId == null || !accounts.any((a) => a.id == _selectedAccountId)) {
-                    final match = accounts.where((a) => a.currency == _selectedCurrency).firstOrNull;
-                    _selectedAccountId = match?.id ?? accounts.first.id;
-                    final currentAcc = accounts.firstWhere((a) => a.id == _selectedAccountId);
-                    _selectedCurrency = currentAcc.currency;
+
+                  if (matchingAccounts.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: context.inputBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: context.cardBorder),
+                      ),
+                      child: Text(
+                        'No $_selectedCurrency accounts available',
+                        style: const TextStyle(color: AppColors.orange, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    );
                   }
 
                   return AppDropdownFormField<String>(
-                    initialValue: _selectedAccountId,
+                    key: ValueKey('tx_source_account_${_selectedCurrency}_$_selectedAccountId'),
+                    value: _selectedAccountId,
                     labelText: 'Source Account',
-                    items: accounts.map((acc) {
+                    sheetTitle: 'Select Source Account',
+                    items: matchingAccounts.map((acc) {
                       return AppDropdownItem<String>(
                         value: acc.id,
                         label: '${acc.name} (${acc.currency})',
@@ -395,19 +422,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                                   ? Icons.account_balance_wallet_outlined
                                   : Icons.payments_outlined,
                           size: 20,
-                          color: AppColors.primary,
+                          color: context.accentIconColor,
                         ),
                       );
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) {
-                        setState(() {
-                          _selectedAccountId = val;
-                          final acc = accounts.where((a) => a.id == val).firstOrNull;
-                          if (acc != null) {
-                            _selectedCurrency = acc.currency;
-                          }
-                        });
+                        setState(() => _selectedAccountId = val);
                       }
                     },
                   );
@@ -421,9 +442,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Category (Optional)',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
+                  Text(
+                    'Category',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
                   ),
                   const SizedBox(height: 6),
                   InkWell(
@@ -444,9 +465,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                       height: 50,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
-                        color: AppColors.darkCardBg,
+                        color: context.inputBg,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.darkCardBorder),
+                        border: Border.all(color: context.cardBorder),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -459,15 +480,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: _selectedCategory != null
-                                      ? AppColors.primary.withValues(alpha: 0.15)
-                                      : Colors.white.withValues(alpha: 0.06),
+                                      ? (_selectedType == 'expense' ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.15)
+                                      : (context.isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05)),
                                 ),
                                 child: Icon(
                                   _selectedCategory != null
                                       ? _getCategoryIcon(_selectedCategory!.icon)
                                       : Icons.category_outlined,
                                   size: 15,
-                                  color: _selectedCategory != null ? AppColors.primaryLight : AppColors.darkTextSecondary,
+                                  color: _selectedCategory != null
+                                      ? (_selectedType == 'expense' ? AppColors.red : (context.isDark ? AppColors.primaryLight : const Color(0xFF059669)))
+                                      : context.textSecondary,
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -476,7 +499,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: _selectedCategory != null ? FontWeight.w600 : FontWeight.w500,
-                                  color: _selectedCategory != null ? Colors.white : AppColors.darkTextMuted,
+                                  color: _selectedCategory != null ? context.textPrimary : context.textMuted,
                                 ),
                               ),
                             ],
@@ -489,14 +512,14 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
                                     margin: const EdgeInsets.only(right: 6),
-                                    decoration: const BoxDecoration(
+                                    decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: Colors.black38,
+                                      color: context.isDark ? Colors.black38 : AppColors.lightCardBorder,
                                     ),
-                                    child: const Icon(Icons.close_rounded, size: 14, color: AppColors.darkTextSecondary),
+                                    child: Icon(Icons.close_rounded, size: 14, color: context.textSecondary),
                                   ),
                                 ),
-                              const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.darkTextSecondary),
+                              Icon(Icons.chevron_right_rounded, size: 18, color: context.textSecondary),
                             ],
                           ),
                         ],
@@ -511,9 +534,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Transaction Date',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
                   ),
                   const SizedBox(height: 6),
                   InkWell(
@@ -533,24 +556,24 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                       height: 50,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
-                        color: AppColors.darkCardBg,
+                        color: context.inputBg,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.darkCardBorder),
+                        border: Border.all(color: context.cardBorder),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.primaryLight),
+                              Icon(Icons.calendar_month_rounded, size: 18, color: context.accentIconColor),
                               const SizedBox(width: 10),
                               Text(
                                 '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: context.textPrimary),
                               ),
                             ],
                           ),
-                          const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.darkTextSecondary),
+                          Icon(Icons.chevron_right_rounded, size: 18, color: context.textSecondary),
                         ],
                       ),
                     ),
@@ -563,31 +586,31 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Description / Notes (Optional)',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _descController,
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
                     decoration: InputDecoration(
                       hintText: 'e.g., Lunch with friends, groceries, wifi',
-                      hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
+                      hintStyle: TextStyle(color: context.textMuted, fontSize: 14),
                       filled: true,
-                      fillColor: AppColors.darkCardBg,
+                      fillColor: context.inputBg,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                        borderSide: BorderSide(color: context.cardBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                        borderSide: BorderSide(color: context.cardBorder),
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                      focusedBorder: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(16)),
+                        borderSide: BorderSide(color: AppColors.primary, width: 1.2),
                       ),
                     ),
                   ),
@@ -682,7 +705,7 @@ class _TypeSwitchButton extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: isActive ? Colors.black : AppColors.darkTextSecondary,
+              color: isActive ? Colors.black : context.textSecondary,
             ),
           ),
         ),

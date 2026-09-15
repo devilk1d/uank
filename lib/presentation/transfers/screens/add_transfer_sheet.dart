@@ -35,8 +35,18 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
 
   String? _fromAccountId;
   String? _toAccountId;
+  num? _apiRate;
+  bool _isCustomRate = false;
   bool _isLoading = false;
   bool _isFetchingRate = false;
+  String? _rateError;
+  bool _hasInitializedAccounts = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountFromController.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
@@ -51,29 +61,112 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
     return accounts.where((a) => a.id == id).firstOrNull;
   }
 
-  Future<void> _updateExchangeRate(List<Account> accounts) async {
+  Future<void> _updateExchangeRate(List<Account> accounts, {bool forceRefresh = false}) async {
     final fromAcc = _findAccount(accounts, _fromAccountId);
     final toAcc = _findAccount(accounts, _toAccountId);
     if (fromAcc == null || toAcc == null) return;
+
     if (fromAcc.currency == toAcc.currency) {
-      _rateController.text = '1.0';
+      if (mounted) {
+        setState(() {
+          _rateController.text = '1.0';
+          _apiRate = 1.0;
+          _isCustomRate = false;
+          _rateError = null;
+        });
+      }
       return;
     }
 
-    setState(() => _isFetchingRate = true);
+    setState(() {
+      _isFetchingRate = true;
+      _rateError = null;
+    });
+
     try {
       final rate = await ref
           .read(exchangeRateRepositoryProvider)
-          .getLatestRate(fromAcc.currency, toAcc.currency);
+          .getLatestRate(fromAcc.currency, toAcc.currency, forceRefresh: forceRefresh);
       if (rate != null && mounted) {
+        final formatted = _formatRate(rate.rate);
         setState(() {
-          _rateController.text = rate.rate.toString();
+          _apiRate = rate.rate;
+          _rateController.text = formatted;
+          _isCustomRate = false;
+        });
+      } else if (mounted) {
+        setState(() {
+          _rateError = 'Failed to load live rate from API. You can enter it manually.';
         });
       }
     } catch (_) {
-      // Ignored
+      if (mounted) {
+        setState(() {
+          _rateError = 'Network error fetching rate. You can enter it manually.';
+        });
+      }
     } finally {
       if (mounted) setState(() => _isFetchingRate = false);
+    }
+  }
+
+  void _swapAccounts(List<Account> accounts) {
+    if (_fromAccountId == null || _toAccountId == null) return;
+    setState(() {
+      final temp = _fromAccountId;
+      _fromAccountId = _toAccountId;
+      _toAccountId = temp;
+    });
+    _updateExchangeRate(accounts);
+  }
+
+  void _resetToApiRate() {
+    if (_apiRate != null) {
+      setState(() {
+        _rateController.text = _formatRate(_apiRate!);
+        _isCustomRate = false;
+      });
+    }
+  }
+
+  String _formatRate(num rate) {
+    if (rate >= 100) {
+      return rate % 1 == 0 ? rate.toStringAsFixed(0) : rate.toStringAsFixed(2);
+    } else if (rate >= 1) {
+      return rate.toStringAsFixed(4).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+    } else {
+      final s = rate.toStringAsFixed(6).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+      return s.isEmpty ? '0' : s;
+    }
+  }
+
+  String _formatAmount(num value, String currency) {
+    if (currency == 'IDR') {
+      final s = value.toStringAsFixed(0);
+      final buffer = StringBuffer();
+      for (int i = 0; i < s.length; i++) {
+        if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
+        buffer.write(s[i]);
+      }
+      return buffer.toString();
+    } else {
+      if (value % 1 == 0) {
+        final s = value.toStringAsFixed(0);
+        final buffer = StringBuffer();
+        for (int i = 0; i < s.length; i++) {
+          if (i > 0 && (s.length - i) % 3 == 0) buffer.write(',');
+          buffer.write(s[i]);
+        }
+        return buffer.toString();
+      }
+      final parts = value.toStringAsFixed(2).split('.');
+      final s = parts[0];
+      final buffer = StringBuffer();
+      for (int i = 0; i < s.length; i++) {
+        if (i > 0 && (s.length - i) % 3 == 0) buffer.write(',');
+        buffer.write(s[i]);
+      }
+      return '${buffer.toString()}.${parts[1]}';
     }
   }
 
@@ -102,8 +195,19 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
       return;
     }
 
-    final exchangeRate = num.tryParse(_rateController.text) ?? 1.0;
-    final amountTo = amountFrom * exchangeRate;
+    final fromAcc = _findAccount(accounts, _fromAccountId);
+    final toAcc = _findAccount(accounts, _toAccountId);
+    final isCrossCurrency = fromAcc != null && toAcc != null && fromAcc.currency != toAcc.currency;
+
+    final exchangeRate = isCrossCurrency ? (num.tryParse(_rateController.text) ?? 1.0) : 1.0;
+    if (isCrossCurrency && exchangeRate <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid exchange rate greater than 0'), backgroundColor: AppColors.red),
+      );
+      return;
+    }
+
+    final amountTo = isCrossCurrency ? (amountFrom * exchangeRate) : amountFrom;
 
     setState(() => _isLoading = true);
 
@@ -138,10 +242,10 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(22, 20, 22, 20 + bottomInset),
-      decoration: const BoxDecoration(
-        color: AppColors.darkCardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        border: Border(top: BorderSide(color: AppColors.darkCardBorder, width: 1.5)),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border(top: BorderSide(color: context.cardBorder, width: 1.5)),
       ),
       child: Form(
         key: _formKey,
@@ -156,29 +260,29 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.darkTextMuted,
+                    color: context.textMuted.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
 
-              const Text(
+              Text(
                 'Transfer Funds',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.darkTextPrimary,
+                  color: context.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Move money between bank accounts, e-wallets, or currencies',
-                style: TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
+                style: TextStyle(fontSize: 12, color: context.textSecondary),
               ),
               const SizedBox(height: 18),
 
-              // Accounts dropdowns
+              // Accounts dropdowns & Swap Button
               accountsAsync.when(
                 data: (accounts) {
                   if (accounts.length < 2) {
@@ -188,18 +292,32 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                     );
                   }
 
-                  _fromAccountId ??= accounts[0].id;
-                  _toAccountId ??= accounts[1].id;
+                  if (!_hasInitializedAccounts) {
+                    _fromAccountId ??= accounts[0].id;
+                    _toAccountId ??= accounts[1].id;
+                    _hasInitializedAccounts = true;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        _updateExchangeRate(accounts);
+                      }
+                    });
+                  }
 
                   final fromAcc = _findAccount(accounts, _fromAccountId);
                   final toAcc = _findAccount(accounts, _toAccountId);
                   final isCrossCurrency = fromAcc != null && toAcc != null && fromAcc.currency != toAcc.currency;
 
+                  final rawAmount = CurrencyInputFormatter.parse(_amountFromController.text);
+                  final currentRate = num.tryParse(_rateController.text) ?? 1.0;
+                  final estimatedAmountTo = isCrossCurrency ? (rawAmount * currentRate) : rawAmount;
+
                   return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // From Account
+                      // Source Account (Sender)
                       AppDropdownFormField<String>(
-                        initialValue: _fromAccountId,
+                        key: ValueKey('from_account_$_fromAccountId'),
+                        value: _fromAccountId,
                         labelText: 'Source Account (Sender)',
                         sheetTitle: 'Select Source Account',
                         items: accounts.map((acc) {
@@ -214,7 +332,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                                       ? Icons.account_balance_wallet_outlined
                                       : Icons.payments_outlined,
                               size: 20,
-                              color: AppColors.primary,
+                              color: context.accentIconColor,
                             ),
                           );
                         }).toList(),
@@ -230,11 +348,43 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                           }
                         },
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
 
-                      // To Account
+                      // Swap Accounts Button
+                      Center(
+                        child: GestureDetector(
+                          onTap: () => _swapAccounts(accounts),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.swap_vert_rounded, size: 16, color: context.accentLinkColor),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Swap Accounts',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: context.accentLinkColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Destination Account (Receiver)
                       AppDropdownFormField<String>(
-                        initialValue: _toAccountId,
+                        key: ValueKey('to_account_$_toAccountId'),
+                        value: _toAccountId,
                         labelText: 'Destination Account (Receiver)',
                         sheetTitle: 'Select Destination Account',
                         items: accounts.where((a) => a.id != _fromAccountId).map((acc) {
@@ -260,77 +410,229 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                       ),
                       const SizedBox(height: 14),
 
-                      // Cross currency notice & rate
+                      // Cross Currency Card (Live Rate from API & Manual Override)
                       if (isCrossCurrency) ...[
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                            color: context.isDark ? const Color(0xFF181A20) : context.inputBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: context.cardBorder),
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.currency_exchange_rounded, size: 20, color: AppColors.primaryLight),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Cross-currency transfer (${fromAcc.currency} \u2192 ${toAcc.currency})',
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryLight),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.currency_exchange_rounded, size: 18, color: context.accentIconColor),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Exchange Rate (${fromAcc.currency} \u2192 ${toAcc.currency})',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (_isFetchingRate)
+                                    SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                                      ),
+                                    )
+                                  else
+                                    GestureDetector(
+                                      onTap: () => _updateExchangeRate(accounts, forceRefresh: true),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.refresh_rounded, size: 14, color: context.accentLinkColor),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            'Refresh',
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.accentLinkColor),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+
+                              // Rate Input Field
+                              TextFormField(
+                                controller: _rateController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                ],
+                                onChanged: (val) {
+                                  final parsed = num.tryParse(val);
+                                  setState(() {
+                                    if (_apiRate != null && parsed != null) {
+                                      final formattedInput = _formatRate(parsed);
+                                      final formattedApi = _formatRate(_apiRate!);
+                                      _isCustomRate = formattedInput != formattedApi;
+                                    } else {
+                                      _isCustomRate = true;
+                                    }
+                                  });
+                                },
+                                style: TextStyle(color: context.textPrimary, fontSize: 15, fontWeight: FontWeight.w700),
+                                decoration: InputDecoration(
+                                  hintText: '1.0',
+                                  prefixText: '1 ${fromAcc.currency} = ',
+                                  prefixStyle: TextStyle(color: context.textSecondary, fontSize: 14, fontWeight: FontWeight.w600),
+                                  suffixText: toAcc.currency,
+                                  suffixStyle: TextStyle(color: context.accentLinkColor, fontSize: 14, fontWeight: FontWeight.w700),
+                                  filled: true,
+                                  fillColor: context.inputBg,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: context.cardBorder),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: context.cardBorder),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: context.isDark ? AppColors.primary : const Color(0xFF15803D), width: 1.2),
+                                  ),
                                 ),
+                              ),
+                              if (_isCustomRate) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Custom rate applied',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.orange),
+                                    ),
+                                    if (_apiRate != null)
+                                      GestureDetector(
+                                        onTap: _resetToApiRate,
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.restore_rounded, size: 13, color: context.accentLinkColor),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Reset to API (${_formatRate(_apiRate!)})',
+                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.accentLinkColor),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                              if (_rateError != null) ...[
+                                const SizedBox(height: 6),
+                                Text(_rateError!, style: const TextStyle(fontSize: 11, color: AppColors.red, fontWeight: FontWeight.w600)),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+
+                      // Transfer Amount
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Transfer Amount', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.textPrimary)),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _amountFromController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [CurrencyInputFormatter()],
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary),
+                            decoration: InputDecoration(
+                              hintText: '0',
+                              prefixText: fromAcc?.currency == 'MYR' ? 'RM ' : 'Rp ',
+                              prefixStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.accentLinkColor),
+                              hintStyle: TextStyle(color: context.textMuted, fontSize: 15),
+                              filled: true,
+                              fillColor: context.inputBg,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: context.cardBorder),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: context.cardBorder),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: context.isDark ? AppColors.primary : const Color(0xFF15803D), width: 1.2),
+                              ),
+                            ),
+                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Amount is required' : null,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Real-time Estimated Destination Amount Preview
+                      if (rawAmount > 0 && fromAcc != null && toAcc != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: context.isDark ? const Color(0xFF14161B) : context.inputBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isCrossCurrency
+                                  ? (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.25)
+                                  : context.cardBorder,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Sender Deducted',
+                                    style: TextStyle(fontSize: 12, color: context.textSecondary, fontWeight: FontWeight.w500),
+                                  ),
+                                  Text(
+                                    '${fromAcc.currency == 'MYR' ? 'RM ' : 'Rp '}${_formatAmount(rawAmount, fromAcc.currency)}',
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Receiver Gets (Estimated)',
+                                    style: TextStyle(fontSize: 12, color: context.textSecondary, fontWeight: FontWeight.w500),
+                                  ),
+                                  Text(
+                                    '${toAcc.currency == 'MYR' ? 'RM ' : 'Rp '}${_formatAmount(estimatedAmountTo, toAcc.currency)}',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: context.isDark ? AppColors.greenLight : const Color(0xFF059669),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Exchange Rate (1 ${fromAcc.currency} = ... ${toAcc.currency})',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
-                            ),
-                            const SizedBox(height: 6),
-                            TextFormField(
-                              controller: _rateController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                              ],
-                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                              decoration: InputDecoration(
-                                hintText: '1.0',
-                                hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
-                                filled: true,
-                                fillColor: AppColors.darkCardBg,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                suffixIcon: _isFetchingRate
-                                    ? const Padding(
-                                        padding: EdgeInsets.all(14),
-                                        child: SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                                        ),
-                                      )
-                                    : null,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                       ],
                     ],
                   );
@@ -339,80 +641,31 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                 error: (e, _) => Text('$e', style: const TextStyle(color: AppColors.red)),
               ),
 
-              // Amount From
-              accountsAsync.when(
-                data: (accounts) {
-                  final fromAcc = _findAccount(accounts, _fromAccountId);
-                  final symbol = fromAcc?.currency == 'MYR' ? 'RM ' : 'Rp ';
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Transfer Amount',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _amountFromController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [CurrencyInputFormatter()],
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: '0',
-                          prefixText: symbol,
-                          prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary),
-                          hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
-                          filled: true,
-                          fillColor: AppColors.darkCardBg,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Amount is required' : null,
-                      ),
-                    ],
-                  );
-                },
-                loading: () => const SizedBox.shrink(),
-                error: (_, _) => const SizedBox.shrink(),
-              ),
-              const SizedBox(height: 16),
-
               // Notes
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Notes (Optional)',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _notesController,
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
                     decoration: InputDecoration(
                       hintText: 'e.g., Transfer to savings, pocket money',
-                      hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
+                      hintStyle: TextStyle(color: context.textMuted, fontSize: 14),
                       filled: true,
-                      fillColor: AppColors.darkCardBg,
+                      fillColor: context.inputBg,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                        borderSide: BorderSide(color: context.cardBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                        borderSide: BorderSide(color: context.cardBorder),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -422,7 +675,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
 
               // Submit Button
               accountsAsync.when(

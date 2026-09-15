@@ -46,6 +46,7 @@ dependencies:
   flutter_dotenv: ^6.0.1
   google_fonts: ^8.2.1
   http: ^1.6.0
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +74,7 @@ flutter:
 
   assets:
     - .env
+    - lib/core/image/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

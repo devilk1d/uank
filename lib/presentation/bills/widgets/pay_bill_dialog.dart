@@ -16,8 +16,11 @@ class PayBillDialog extends ConsumerStatefulWidget {
   final DateTime? periodMonth;
 
   static Future<void> show(BuildContext context, Bill bill, {DateTime? periodMonth}) {
-    return showDialog(
+    return showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.65),
       builder: (_) => PayBillDialog(bill: bill, periodMonth: periodMonth),
     );
   }
@@ -86,54 +89,89 @@ class _PayBillDialogState extends ConsumerState<PayBillDialog> {
   @override
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountsProvider);
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    return AlertDialog(
-      backgroundColor: AppColors.darkCardBg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: const BorderSide(color: AppColors.darkCardBorder),
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 16, 22, 24 + bottomInset + bottomPadding),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border(
+          top: BorderSide(color: context.cardBorder, width: 1.5),
+        ),
       ),
-      title: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.primary.withValues(alpha: 0.15),
-            ),
-            child: const Icon(Icons.receipt_long_rounded, color: AppColors.primaryLight, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Pay Bill',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.darkTextPrimary),
-                ),
-                Text(
-                  widget.bill.name,
-                  style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      content: SingleChildScrollView(
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Amount
-            const Text(
+            // Drag Handle
+            Center(
+              child: Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: context.textMuted.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            // Header Row: Icon + Title
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.15),
+                    border: Border.all(
+                      color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.3),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Icon(Icons.receipt_long_rounded, color: context.accentIconColor, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pay Bill',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.bill.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Amount to Pay
+            Text(
               'Amount to Pay',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.darkTextSecondary,
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 8),
@@ -141,41 +179,41 @@ class _PayBillDialogState extends ConsumerState<PayBillDialog> {
               controller: _amountController,
               keyboardType: TextInputType.number,
               inputFormatters: [CurrencyInputFormatter()],
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+              style: TextStyle(
+                color: context.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
               ),
               decoration: InputDecoration(
                 hintText: '0',
-                hintStyle: const TextStyle(
-                  color: AppColors.darkTextMuted,
+                hintStyle: TextStyle(
+                  color: context.textMuted,
                   fontSize: 14,
                 ),
                 prefixText: widget.bill.currency == 'IDR' ? 'Rp  ' : 'RM  ',
-                prefixStyle: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                prefixStyle: TextStyle(
+                  color: context.accentLinkColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
                 ),
                 filled: true,
-                fillColor: AppColors.darkCardBg,
+                fillColor: context.inputBg,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 14,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                  borderSide: BorderSide(color: context.cardBorder),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                  borderSide: BorderSide(color: context.cardBorder),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
+                  borderSide: BorderSide(
+                    color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
                     width: 1.2,
                   ),
                 ),
@@ -210,7 +248,7 @@ class _PayBillDialogState extends ConsumerState<PayBillDialog> {
                                 ? Icons.account_balance_wallet_outlined
                                 : Icons.payments_outlined,
                         size: 20,
-                        color: AppColors.primary,
+                        color: context.accentIconColor,
                       ),
                     );
                   }).toList(),
@@ -223,12 +261,12 @@ class _PayBillDialogState extends ConsumerState<PayBillDialog> {
             const SizedBox(height: 16),
 
             // Payment Date Picker
-            const Text(
+            Text(
               'Payment Date',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.darkTextSecondary,
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 8),
@@ -248,78 +286,98 @@ class _PayBillDialogState extends ConsumerState<PayBillDialog> {
                 height: 50,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.darkCardBg,
+                  color: context.inputBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.darkCardBorder),
+                  border: Border.all(color: context.cardBorder),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.calendar_today_rounded,
                           size: 18,
-                          color: AppColors.primaryLight,
+                          color: context.accentIconColor,
                         ),
                         const SizedBox(width: 12),
                         Text(
                           '${_selectedPaidDate.day}/${_selectedPaidDate.month}/${_selectedPaidDate.year}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                            color: context.textPrimary,
                           ),
                         ),
                       ],
                     ),
-                    const Icon(
+                    Icon(
                       Icons.chevron_right_rounded,
                       size: 20,
-                      color: AppColors.darkTextSecondary,
+                      color: context.textSecondary,
                     ),
                   ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Action Buttons
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.black,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: _isLoading ? null : _pay,
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                      )
+                    : const Text(
+                        'Confirm Payment',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: context.textSecondary,
+                  backgroundColor: context.inputBg,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: context.cardBorder,
+                    ),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimary,
+                  ),
                 ),
               ),
             ),
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text(
-            'Cancel',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkTextSecondary,
-            ),
-          ),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          ),
-          onPressed: _isLoading ? null : _pay,
-          child: _isLoading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                )
-              : const Text(
-                  'Confirm Payment',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-        ),
-      ],
     );
   }
 }

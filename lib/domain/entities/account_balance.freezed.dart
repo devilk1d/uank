@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AccountBalance {
 
-@JsonKey(name: 'account_id') String get accountId; String get name; String get type; String get currency; num get balance;
+@JsonKey(name: 'account_id') String get accountId; String get name; String get type; String get currency; num get balance;@JsonKey(name: 'is_active') bool get isActive;
 /// Create a copy of AccountBalance
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $AccountBalanceCopyWith<AccountBalance> get copyWith => _$AccountBalanceCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as AccountBalance;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AccountBalance&&(identical(other.accountId, _this.accountId) || other.accountId == _this.accountId)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.currency, _this.currency) || other.currency == _this.currency)&&(identical(other.balance, _this.balance) || other.balance == _this.balance));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AccountBalance&&(identical(other.accountId, _this.accountId) || other.accountId == _this.accountId)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.currency, _this.currency) || other.currency == _this.currency)&&(identical(other.balance, _this.balance) || other.balance == _this.balance)&&(identical(other.isActive, _this.isActive) || other.isActive == _this.isActive));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as AccountBalance;
-  return Object.hash(runtimeType,_this.accountId,_this.name,_this.type,_this.currency,_this.balance);
+  return Object.hash(runtimeType,_this.accountId,_this.name,_this.type,_this.currency,_this.balance,_this.isActive);
 }
 
 @override
 String toString() {
   final _this = this as AccountBalance;
-  return 'AccountBalance(accountId: ${_this.accountId}, name: ${_this.name}, type: ${_this.type}, currency: ${_this.currency}, balance: ${_this.balance})';
+  return 'AccountBalance(accountId: ${_this.accountId}, name: ${_this.name}, type: ${_this.type}, currency: ${_this.currency}, balance: ${_this.balance}, isActive: ${_this.isActive})';
 }
 
 
@@ -54,7 +54,7 @@ abstract mixin class $AccountBalanceCopyWith<$Res>  {
   factory $AccountBalanceCopyWith(AccountBalance value, $Res Function(AccountBalance) _then) = _$AccountBalanceCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'account_id') String accountId, String name, String type, String currency, num balance
+@JsonKey(name: 'account_id') String accountId, String name, String type, String currency, num balance,@JsonKey(name: 'is_active') bool isActive
 });
 
 
@@ -71,14 +71,15 @@ class _$AccountBalanceCopyWithImpl<$Res>
 
 /// Create a copy of AccountBalance
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? accountId = null,Object? name = null,Object? type = null,Object? currency = null,Object? balance = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? accountId = null,Object? name = null,Object? type = null,Object? currency = null,Object? balance = null,Object? isActive = null,}) {
   return _then(AccountBalance(
 accountId: null == accountId ? _self.accountId : accountId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,balance: null == balance ? _self.balance : balance // ignore: cast_nullable_to_non_nullable
-as num,
+as num,isActive: null == isActive ? _self.isActive : isActive // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -163,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'account_id')  String accountId,  String name,  String type,  String currency,  num balance)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'account_id')  String accountId,  String name,  String type,  String currency,  num balance, @JsonKey(name: 'is_active')  bool isActive)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AccountBalance() when $default != null:
-return $default(_that.accountId,_that.name,_that.type,_that.currency,_that.balance);case _:
+return $default(_that.accountId,_that.name,_that.type,_that.currency,_that.balance,_that.isActive);case _:
   return orElse();
 
 }
@@ -184,10 +185,10 @@ return $default(_that.accountId,_that.name,_that.type,_that.currency,_that.balan
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'account_id')  String accountId,  String name,  String type,  String currency,  num balance)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'account_id')  String accountId,  String name,  String type,  String currency,  num balance, @JsonKey(name: 'is_active')  bool isActive)  $default,) {final _that = this;
 switch (_that) {
 case _AccountBalance():
-return $default(_that.accountId,_that.name,_that.type,_that.currency,_that.balance);case _:
+return $default(_that.accountId,_that.name,_that.type,_that.currency,_that.balance,_that.isActive);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -204,10 +205,10 @@ return $default(_that.accountId,_that.name,_that.type,_that.currency,_that.balan
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'account_id')  String accountId,  String name,  String type,  String currency,  num balance)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'account_id')  String accountId,  String name,  String type,  String currency,  num balance, @JsonKey(name: 'is_active')  bool isActive)?  $default,) {final _that = this;
 switch (_that) {
 case _AccountBalance() when $default != null:
-return $default(_that.accountId,_that.name,_that.type,_that.currency,_that.balance);case _:
+return $default(_that.accountId,_that.name,_that.type,_that.currency,_that.balance,_that.isActive);case _:
   return null;
 
 }
@@ -219,7 +220,7 @@ return $default(_that.accountId,_that.name,_that.type,_that.currency,_that.balan
 @JsonSerializable()
 
 class _AccountBalance implements AccountBalance {
-  const _AccountBalance({@JsonKey(name: 'account_id') required this.accountId, required this.name, required this.type, required this.currency, required this.balance});
+  const _AccountBalance({@JsonKey(name: 'account_id') required this.accountId, required this.name, required this.type, required this.currency, required this.balance, @JsonKey(name: 'is_active') this.isActive = true});
   factory _AccountBalance.fromJson(Map<String, dynamic> json) => _$AccountBalanceFromJson(json);
 
 @override@JsonKey(name: 'account_id') final  String accountId;
@@ -227,6 +228,7 @@ class _AccountBalance implements AccountBalance {
 @override final  String type;
 @override final  String currency;
 @override final  num balance;
+@override@JsonKey(name: 'is_active') final  bool isActive;
 
 /// Create a copy of AccountBalance
 /// with the given fields replaced by the non-null parameter values.
@@ -241,18 +243,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AccountBalance&&(identical(other.accountId, accountId) || other.accountId == accountId)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.balance, balance) || other.balance == balance));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AccountBalance&&(identical(other.accountId, accountId) || other.accountId == accountId)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.isActive, isActive) || other.isActive == isActive));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,accountId,name,type,currency,balance);
+    return Object.hash(runtimeType,accountId,name,type,currency,balance,isActive);
 }
 
 @override
 String toString() {
-    return 'AccountBalance(accountId: $accountId, name: $name, type: $type, currency: $currency, balance: $balance)';
+    return 'AccountBalance(accountId: $accountId, name: $name, type: $type, currency: $currency, balance: $balance, isActive: $isActive)';
 }
 
 
@@ -263,7 +265,7 @@ abstract mixin class _$AccountBalanceCopyWith<$Res> implements $AccountBalanceCo
   factory _$AccountBalanceCopyWith(_AccountBalance value, $Res Function(_AccountBalance) _then) = __$AccountBalanceCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'account_id') String accountId, String name, String type, String currency, num balance
+@JsonKey(name: 'account_id') String accountId, String name, String type, String currency, num balance,@JsonKey(name: 'is_active') bool isActive
 });
 
 
@@ -280,14 +282,15 @@ class __$AccountBalanceCopyWithImpl<$Res>
 
 /// Create a copy of AccountBalance
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? accountId = null,Object? name = null,Object? type = null,Object? currency = null,Object? balance = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? accountId = null,Object? name = null,Object? type = null,Object? currency = null,Object? balance = null,Object? isActive = null,}) {
   return _then(_AccountBalance(
 accountId: null == accountId ? _self.accountId : accountId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,balance: null == balance ? _self.balance : balance // ignore: cast_nullable_to_non_nullable
-as num,
+as num,isActive: null == isActive ? _self.isActive : isActive // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

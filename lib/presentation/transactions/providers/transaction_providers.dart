@@ -7,7 +7,7 @@ import '../../repository_providers.dart';
 
 part 'transaction_providers.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<List<Transaction>> transactions(Ref ref) {
   final repo = ref.watch(transactionRepositoryProvider);
   return repo.getAll();

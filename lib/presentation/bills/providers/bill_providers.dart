@@ -9,13 +9,13 @@ import '../../transactions/providers/transaction_providers.dart';
 
 part 'bill_providers.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<List<Bill>> bills(Ref ref) {
   final repo = ref.watch(billRepositoryProvider);
   return repo.getAll();
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<List<BillPayment>> currentMonthBillPayments(Ref ref) {
   final repo = ref.watch(billRepositoryProvider);
   return repo.getCurrentMonthPayments();

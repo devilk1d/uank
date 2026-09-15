@@ -57,11 +57,11 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomInset),
-      decoration: const BoxDecoration(
-        color: AppColors.darkCardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border(
-          top: BorderSide(color: AppColors.darkCardBorder, width: 1.5),
+          top: BorderSide(color: context.cardBorder, width: 1.5),
         ),
       ),
       child: Column(
@@ -74,7 +74,7 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.darkTextMuted,
+                color: context.textMuted.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -89,13 +89,13 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                 height: 38,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  color: (context.isDark ? AppColors.primary : const Color(0xFF0D9488)).withValues(alpha: 0.15),
+                  border: Border.all(color: (context.isDark ? AppColors.primary : const Color(0xFF0D9488)).withValues(alpha: 0.3)),
                 ),
-                child: const Icon(Icons.currency_exchange_rounded, color: AppColors.primary, size: 20),
+                child: Icon(Icons.currency_exchange_rounded, color: context.isDark ? AppColors.primary : const Color(0xFF0D9488), size: 20),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -104,22 +104,22 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.darkTextPrimary,
+                        color: context.textPrimary,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       'Real-time conversion calculator',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.darkTextSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.refresh_rounded, color: AppColors.primaryLight, size: 20),
+                icon: Icon(Icons.refresh_rounded, color: context.textSecondary, size: 20),
                 tooltip: 'Refresh Rate',
                 onPressed: () {
                   ref.invalidate(latestRateProvider(fromCurrency: _fromCurrency, toCurrency: _toCurrency));
@@ -131,7 +131,7 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.close_rounded, color: AppColors.darkTextSecondary, size: 22),
+                icon: Icon(Icons.close_rounded, color: context.textSecondary, size: 22),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -148,9 +148,9 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF181A20),
+                      color: context.inputBg,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppColors.darkCardBorder),
+                      border: Border.all(color: context.cardBorder),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,27 +158,27 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'You Send',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.darkTextSecondary,
+                                color: context.textSecondary,
                               ),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.15),
+                                color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                                border: Border.all(color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.3)),
                               ),
                               child: Text(
                                 _fromCurrency,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13,
-                                  color: AppColors.primaryLight,
+                                  color: context.isDark ? AppColors.primaryLight : const Color(0xFF15803D),
                                 ),
                               ),
                             ),
@@ -191,14 +191,14 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                             controller: _amountController,
                             keyboardType: TextInputType.number,
                             inputFormatters: [CurrencyInputFormatter()],
-                            cursorColor: AppColors.primary,
-                            style: const TextStyle(
+                            cursorColor: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                            style: TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.darkTextPrimary,
+                              color: context.textPrimary,
                               letterSpacing: -0.5,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               isDense: true,
                               filled: false,
                               fillColor: Colors.transparent,
@@ -210,7 +210,7 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                               disabledBorder: InputBorder.none,
                               hintText: '0',
                               hintStyle: TextStyle(
-                                color: AppColors.darkTextMuted,
+                                color: context.textMuted,
                                 fontSize: 26,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -227,9 +227,9 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF181A20),
+                      color: context.inputBg,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppColors.darkCardBorder),
+                      border: Border.all(color: context.cardBorder),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,12 +237,12 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'You Get (Estimated)',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.darkTextSecondary,
+                                color: context.textSecondary,
                               ),
                             ),
                             Container(
@@ -272,19 +272,19 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                               converted != null
                                   ? _formatNumber(converted)
                                   : 'Rate unavailable',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 26,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.greenLight,
+                                color: context.isDark ? AppColors.greenLight : const Color(0xFF059669),
                                 letterSpacing: -0.5,
                               ),
                             ),
-                            loading: () => const SizedBox(
+                            loading: () => SizedBox(
                               width: 22,
                               height: 22,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
-                                color: AppColors.primary,
+                                color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
                               ),
                             ),
                             error: (_, _) => const Text(
@@ -312,7 +312,7 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppColors.primary,
-                    border: Border.all(color: AppColors.darkCardBg, width: 3),
+                    border: Border.all(color: context.cardBg, width: 3),
                     boxShadow: [
                       BoxShadow(
                         color: AppColors.primary.withValues(alpha: 0.4),
@@ -356,7 +356,6 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                   ),
                 );
               }
-              final sourceLabel = rate.source == 'open_er' ? 'ExchangeRate-API' : rate.source.toUpperCase();
               final isIdr = _fromCurrency == 'IDR';
               final baseUnit = isIdr ? '1.000' : '1';
               final rateValue = isIdr ? rate.rate * 1000 : rate.rate;
@@ -365,9 +364,9 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF14161B),
+                  color: context.inputBg,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.darkCardBorder),
+                  border: Border.all(color: context.cardBorder),
                 ),
                 child: Row(
                   children: [
@@ -383,19 +382,11 @@ class _ExchangeRateScreenState extends ConsumerState<ExchangeRateScreen> {
                     Expanded(
                       child: Text(
                         '$baseUnit $_fromCurrency = $rateFormatted $_toCurrency',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.darkTextPrimary,
+                          color: context.textPrimary,
                         ),
-                      ),
-                    ),
-                    Text(
-                      sourceLabel,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.darkTextMuted,
                       ),
                     ),
                   ],

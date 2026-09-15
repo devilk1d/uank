@@ -9,6 +9,7 @@ import '../../bills/providers/bill_providers.dart';
 import '../../bills/widgets/pay_bill_dialog.dart';
 import '../../exchange_rates/screens/exchange_rate_screen.dart';
 import '../../shell/main_shell.dart';
+import '../../transactions/providers/transaction_providers.dart';
 import '../../transfers/screens/add_transfer_sheet.dart';
 import '../models/app_notification_item.dart';
 import '../providers/notification_providers.dart';
@@ -36,28 +37,39 @@ class NotificationsScreen extends ConsumerWidget {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-            children: [
-              // 1. Header (Back Button, Title & Mark Read)
-              _buildHeader(context, ref, unreadCount, allNotifications),
-              const SizedBox(height: 18),
+          child: RefreshIndicator(
+            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+            backgroundColor: context.cardBg,
+            onRefresh: () async {
+              ref.invalidate(notificationsProvider);
+              ref.invalidate(unreadNotificationsCountProvider);
+              ref.invalidate(billsProvider);
+              ref.invalidate(transactionsProvider);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+              children: [
+                // 1. Header (Back Button, Title & Mark Read)
+                _buildHeader(context, ref, unreadCount, allNotifications),
+                const SizedBox(height: 18),
 
-              // 2. Filter Pills (All / Bills / Forex Rates / Activity)
-              _buildFilterChips(ref, selectedCategory, allNotifications),
-              const SizedBox(height: 16),
+                // 2. Filter Pills (All / Bills / Forex Rates / Activity)
+                _buildFilterChips(context, ref, selectedCategory, allNotifications),
+                const SizedBox(height: 16),
 
-              // 3. Notification List
-              if (filteredList.isEmpty)
-                _buildEmptyState()
-              else
-                ...filteredList.map((item) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _NotificationCard(item: item),
-                  );
-                }),
-            ],
+                // 3. Notification List
+                if (filteredList.isEmpty)
+                  _buildEmptyState(context)
+                else
+                  ...filteredList.map((item) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _NotificationCard(item: item),
+                    );
+                  }),
+              ],
+            ),
           ),
         ),
       ),
@@ -82,13 +94,13 @@ class NotificationsScreen extends ConsumerWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.darkCardBg,
-                  border: Border.all(color: AppColors.darkCardBorder),
+                  color: context.cardBg,
+                  border: Border.all(color: context.cardBorder),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.arrow_back_ios_new_rounded,
                   size: 16,
-                  color: AppColors.darkTextPrimary,
+                  color: context.textPrimary,
                 ),
               ),
             ),
@@ -98,13 +110,13 @@ class NotificationsScreen extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    const Text(
+                    Text(
                       'Notifications',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.5,
-                        color: AppColors.darkTextPrimary,
+                        color: context.textPrimary,
                       ),
                     ),
                     if (unreadCount > 0) ...[
@@ -143,21 +155,21 @@ class NotificationsScreen extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.darkCardBg,
+                color: context.cardBg,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.darkCardBorder),
+                border: Border.all(color: context.cardBorder),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.done_all_rounded, size: 15, color: AppColors.primaryLight),
-                  SizedBox(width: 5),
+                  Icon(Icons.done_all_rounded, size: 15, color: context.accentLinkColor),
+                  const SizedBox(width: 5),
                   Text(
                     'Mark read',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primaryLight,
+                      color: context.accentLinkColor,
                     ),
                   ),
                 ],
@@ -169,6 +181,7 @@ class NotificationsScreen extends ConsumerWidget {
   }
 
   Widget _buildFilterChips(
+    BuildContext context,
     WidgetRef ref,
     NotificationCategory selected,
     List<AppNotificationItem> allItems,
@@ -195,10 +208,10 @@ class NotificationsScreen extends ConsumerWidget {
                 duration: const Duration(milliseconds: 180),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : AppColors.darkCardBg,
+                  color: isSelected ? AppColors.primary : context.cardBg,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary : AppColors.darkCardBorder,
+                    color: isSelected ? AppColors.primary : context.cardBorder,
                   ),
                 ),
                 child: Text(
@@ -206,7 +219,7 @@ class NotificationsScreen extends ConsumerWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                    color: isSelected ? Colors.black : AppColors.darkTextSecondary,
+                    color: isSelected ? Colors.black : context.textSecondary,
                   ),
                 ),
               ),
@@ -217,7 +230,7 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(top: 80),
@@ -228,28 +241,28 @@ class NotificationsScreen extends ConsumerWidget {
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.darkCardBg,
-                border: Border.all(color: AppColors.darkCardBorder),
+                color: context.cardBg,
+                border: Border.all(color: context.cardBorder),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.notifications_none_rounded,
                 size: 26,
-                color: AppColors.darkTextMuted,
+                color: context.textMuted,
               ),
             ),
             const SizedBox(height: 14),
-            const Text(
+            Text(
               'No notifications',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: AppColors.darkTextSecondary,
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'You have caught up with all updates',
-              style: TextStyle(fontSize: 12, color: AppColors.darkTextMuted),
+              style: TextStyle(fontSize: 12, color: context.textMuted),
             ),
           ],
         ),
@@ -265,7 +278,7 @@ class _NotificationCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final style = _getTypeStyle(item.type);
+    final style = _getTypeStyle(context, item.type);
 
     return GestureDetector(
       onTap: () {
@@ -306,7 +319,7 @@ class _NotificationCard extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: item.isRead ? FontWeight.w600 : FontWeight.w700,
-                            color: AppColors.darkTextPrimary,
+                            color: context.textPrimary,
                           ),
                         ),
                       ),
@@ -315,9 +328,9 @@ class _NotificationCard extends ConsumerWidget {
                         Container(
                           width: 7,
                           height: 7,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.primary,
+                            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
                           ),
                         ),
                       ],
@@ -328,10 +341,10 @@ class _NotificationCard extends ConsumerWidget {
                     item.message,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.darkTextSecondary,
+                      color: context.textSecondary,
                       height: 1.3,
                     ),
                   ),
@@ -343,10 +356,10 @@ class _NotificationCard extends ConsumerWidget {
             // Right Relative Time
             Text(
               _formatRelativeTime(item.timestamp),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
-                color: AppColors.darkTextMuted,
+                color: context.textMuted,
               ),
             ),
           ],
@@ -378,22 +391,22 @@ class _NotificationCard extends ConsumerWidget {
     }
   }
 
-  _TypeStyle _getTypeStyle(NotificationType type) {
+  _TypeStyle _getTypeStyle(BuildContext context, NotificationType type) {
     switch (type) {
       case NotificationType.overdue:
         return const _TypeStyle(icon: Icons.error_outline_rounded, color: AppColors.red);
       case NotificationType.dueSoon:
         return const _TypeStyle(icon: Icons.notifications_active_rounded, color: AppColors.orange);
       case NotificationType.paid:
-        return const _TypeStyle(icon: Icons.check_circle_outline_rounded, color: AppColors.green);
+        return _TypeStyle(icon: Icons.check_circle_outline_rounded, color: context.incomeColor);
       case NotificationType.rateAlert:
-        return const _TypeStyle(icon: Icons.currency_exchange_rounded, color: AppColors.primaryLight);
+        return _TypeStyle(icon: Icons.currency_exchange_rounded, color: context.isDark ? AppColors.primaryLight : const Color(0xFF0D9488));
       case NotificationType.transferSuccess:
         return const _TypeStyle(icon: Icons.swap_horiz_rounded, color: AppColors.teal);
       case NotificationType.lowBalance:
         return const _TypeStyle(icon: Icons.account_balance_wallet_outlined, color: AppColors.orange);
       case NotificationType.general:
-        return const _TypeStyle(icon: Icons.info_outline_rounded, color: AppColors.primaryLight);
+        return _TypeStyle(icon: Icons.info_outline_rounded, color: context.isDark ? AppColors.primaryLight : const Color(0xFF2563EB));
     }
   }
 

@@ -86,10 +86,10 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(22, 20, 22, 20 + bottomInset),
-      decoration: const BoxDecoration(
-        color: AppColors.darkCardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        border: Border(top: BorderSide(color: AppColors.darkCardBorder, width: 1.5)),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border(top: BorderSide(color: context.cardBorder, width: 1.5)),
       ),
       child: Form(
         key: _formKey,
@@ -104,25 +104,25 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.darkTextMuted,
+                    color: context.textMuted.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
 
-              const Text(
+              Text(
                 'Add Recurring Bill',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.darkTextPrimary,
+                  color: context.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Schedule recurring payments (Utilities, Internet, Rent, etc.)',
-                style: TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
+                style: TextStyle(fontSize: 12, color: context.textSecondary),
               ),
               const SizedBox(height: 18),
 
@@ -131,35 +131,38 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'Bill Name',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.darkTextSecondary,
+                      color: context.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _nameController,
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
                     decoration: InputDecoration(
                       hintText: 'e.g., Fiber Internet, Electricity, Rent',
-                      hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
+                      hintStyle: TextStyle(color: context.textMuted, fontSize: 14),
                       filled: true,
-                      fillColor: AppColors.darkCardBg,
+                      fillColor: context.inputBg,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                        borderSide: BorderSide(color: context.cardBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                        borderSide: BorderSide(color: context.cardBorder),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                        borderSide: BorderSide(
+                          color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                          width: 1.2,
+                        ),
                       ),
                     ),
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Bill name is required' : null,
@@ -169,130 +172,161 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
               const SizedBox(height: 16),
 
               // Amount & Currency
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Amount',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.darkTextSecondary,
+              accountsAsync.when(
+                data: (accounts) => Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Amount',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: context.textSecondary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _amountController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [CurrencyInputFormatter()],
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: '0',
-                            prefixText: _selectedCurrency == 'IDR' ? 'Rp ' : 'RM ',
-                            prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary),
-                            hintStyle: const TextStyle(
-                              color: AppColors.darkTextMuted,
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _amountController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [CurrencyInputFormatter()],
+                            style: TextStyle(
                               fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: context.textPrimary,
                             ),
-                            filled: true,
-                            fillColor: AppColors.darkCardBg,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: AppColors.darkCardBorder),
+                            decoration: InputDecoration(
+                              hintText: '0',
+                              prefixText: _selectedCurrency == 'IDR' ? 'Rp ' : 'RM ',
+                              prefixStyle: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: context.accentLinkColor,
+                              ),
+                              hintStyle: TextStyle(
+                                color: context.textMuted,
+                                fontSize: 14,
+                              ),
+                              filled: true,
+                              fillColor: context.inputBg,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: context.cardBorder),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: context.cardBorder),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                                  width: 1.2,
+                                ),
+                              ),
                             ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: AppColors.darkCardBorder),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
-                            ),
+                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                           ),
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Currency',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.darkTextSecondary),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          height: 50,
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: AppColors.darkCardBg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.darkCardBorder),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Currency',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () => setState(() => _selectedCurrency = 'IDR'),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: _selectedCurrency == 'IDR' ? AppColors.primary : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      'IDR',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: _selectedCurrency == 'IDR' ? Colors.black : AppColors.darkTextSecondary,
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 50,
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: context.inputBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: context.cardBorder),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedCurrency = 'IDR';
+                                        if (_selectedAccountId != null) {
+                                          final acc = accounts.where((a) => a.id == _selectedAccountId).firstOrNull;
+                                          if (acc == null || acc.currency != 'IDR') {
+                                            _selectedAccountId = null;
+                                          }
+                                        }
+                                      });
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: _selectedCurrency == 'IDR' ? AppColors.primary : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'IDR',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: _selectedCurrency == 'IDR' ? Colors.black : context.textSecondary,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () => setState(() => _selectedCurrency = 'MYR'),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: _selectedCurrency == 'MYR' ? AppColors.primary : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      'MYR',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: _selectedCurrency == 'MYR' ? Colors.black : AppColors.darkTextSecondary,
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedCurrency = 'MYR';
+                                        if (_selectedAccountId != null) {
+                                          final acc = accounts.where((a) => a.id == _selectedAccountId).firstOrNull;
+                                          if (acc == null || acc.currency != 'MYR') {
+                                            _selectedAccountId = null;
+                                          }
+                                        }
+                                      });
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: _selectedCurrency == 'MYR' ? AppColors.primary : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'MYR',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: _selectedCurrency == 'MYR' ? Colors.black : context.textSecondary,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
               ),
               const SizedBox(height: 16),
 
@@ -310,7 +344,7 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
                           value: d,
                           label: 'Day $d',
                           subtitle: 'Every month on the ${d}th',
-                          icon: const Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.primary),
+                          icon: Icon(Icons.calendar_today_rounded, size: 18, color: context.accentIconColor),
                         );
                       }).toList(),
                       onChanged: (v) => setState(() => _dueDay = v ?? 10),
@@ -337,20 +371,26 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Default Account (Optional)
+              // Default Account (Optional) - Filtered by selected currency
               accountsAsync.when(
                 data: (accounts) {
+                  final matchingAccounts = accounts.where((a) => a.currency == _selectedCurrency).toList();
+                  if (_selectedAccountId != null && !matchingAccounts.any((a) => a.id == _selectedAccountId)) {
+                    _selectedAccountId = null;
+                  }
+
                   return AppDropdownFormField<String?>(
-                    initialValue: _selectedAccountId,
+                    key: ValueKey('bill_default_account_${_selectedCurrency}_$_selectedAccountId'),
+                    value: _selectedAccountId,
                     labelText: 'Default Payment Account (Optional)',
                     sheetTitle: 'Select Default Account',
                     items: [
-                      const AppDropdownItem<String?>(
+                      AppDropdownItem<String?>(
                         value: null,
                         label: 'None (Select when paying)',
-                        icon: Icon(Icons.help_outline_rounded, size: 20, color: AppColors.darkTextSecondary),
+                        icon: Icon(Icons.help_outline_rounded, size: 20, color: context.textSecondary),
                       ),
-                      ...accounts.map((acc) => AppDropdownItem<String?>(
+                      ...matchingAccounts.map((acc) => AppDropdownItem<String?>(
                             value: acc.id,
                             label: '${acc.name} (${acc.currency})',
                             subtitle: 'Type: ${acc.type.toUpperCase()}',
@@ -361,7 +401,7 @@ class _AddBillSheetState extends ConsumerState<AddBillSheet> {
                                       ? Icons.account_balance_wallet_outlined
                                       : Icons.payments_outlined,
                               size: 20,
-                              color: AppColors.primary,
+                              color: AppColors.teal,
                             ),
                           )),
                     ],

@@ -38,7 +38,7 @@ class SegmentedProgressBar extends StatelessWidget {
       return Container(
         height: height,
         decoration: BoxDecoration(
-          color: AppColors.darkTextMuted.withValues(alpha: 0.3),
+          color: context.textMuted.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(height / 2),
         ),
       );
@@ -92,10 +92,10 @@ class SegmentedProgressBar extends StatelessWidget {
                     item.subtitle != null
                         ? '${item.label} ${item.subtitle}'
                         : '${item.label} $pct%',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.darkTextSecondary,
+                      color: context.textSecondary,
                     ),
                   ),
                 ],

@@ -7,7 +7,7 @@ import '../../repository_providers.dart';
 
 part 'transfer_providers.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<List<Transfer>> transfers(Ref ref) {
   final repo = ref.watch(transferRepositoryProvider);
   return repo.getAll();

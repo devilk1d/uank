@@ -6,7 +6,8 @@ class TransactionRepository {
     final rows = await supabase
         .from('transactions')
         .select()
-        .order('transaction_date', ascending: false);
+        .order('transaction_date', ascending: false)
+        .order('created_at', ascending: false);
     return rows.map((row) => Transaction.fromJson(row)).toList();
   }
 
@@ -15,7 +16,8 @@ class TransactionRepository {
         .from('transactions')
         .select()
         .eq('account_id', accountId)
-        .order('transaction_date', ascending: false);
+        .order('transaction_date', ascending: false)
+        .order('created_at', ascending: false);
     return rows.map((row) => Transaction.fromJson(row)).toList();
   }
 

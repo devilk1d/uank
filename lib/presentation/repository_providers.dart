@@ -18,31 +18,31 @@ import '../data/saving_goals/saving_goal_repository.dart';
 
 part 'repository_providers.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 AuthRepository authRepository(Ref ref) => AuthRepository();
 
-@riverpod
+@Riverpod(keepAlive: true)
 AccountRepository accountRepository(Ref ref) => AccountRepository();
 
-@riverpod
+@Riverpod(keepAlive: true)
 CategoryRepository categoryRepository(Ref ref) => CategoryRepository();
 
-@riverpod
+@Riverpod(keepAlive: true)
 TransactionRepository transactionRepository(Ref ref) => TransactionRepository();
 
-@riverpod
+@Riverpod(keepAlive: true)
 TransferRepository transferRepository(Ref ref) => TransferRepository();
 
-@riverpod
+@Riverpod(keepAlive: true)
 BillRepository billRepository(Ref ref) => BillRepository();
 
-@riverpod
+@Riverpod(keepAlive: true)
 ExchangeRateRepository exchangeRateRepository(Ref ref) =>
     ExchangeRateRepository();
 
-@riverpod
+@Riverpod(keepAlive: true)
 DeviceTokenRepository deviceTokenRepository(Ref ref) => DeviceTokenRepository();
 
-@riverpod
+@Riverpod(keepAlive: true)
 SavingGoalRepository savingGoalRepository(Ref ref) => SavingGoalRepository();
 

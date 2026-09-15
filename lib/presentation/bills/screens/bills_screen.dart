@@ -38,8 +38,22 @@ class BillsScreen extends ConsumerWidget {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
+          child: RefreshIndicator(
+            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+            backgroundColor: context.cardBg,
+            onRefresh: () async {
+              ref.invalidate(billsProvider);
+              ref.invalidate(billPaymentsForSelectedMonthProvider);
+              ref.invalidate(accountsProvider);
+              await Future.wait([
+                ref.read(billsProvider.future),
+                ref.read(billPaymentsForSelectedMonthProvider.future),
+                ref.read(accountsProvider.future),
+              ]);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
             children: [
               // 1. Header
               _buildHeader(context),
@@ -100,10 +114,10 @@ class BillsScreen extends ConsumerWidget {
                             const SizedBox(width: 8),
                             Text(
                               'To Pay (${unpaidBills.length})',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.darkTextPrimary,
+                                color: context.textPrimary,
                               ),
                             ),
                           ],
@@ -129,7 +143,7 @@ class BillsScreen extends ConsumerWidget {
                         }),
                       ] else ...[
                         // All Paid Celebration Card
-                        _buildAllPaidCard(selectedMonth),
+                        _buildAllPaidCard(context, selectedMonth),
                       ],
 
                       // Paid Bills Section
@@ -140,18 +154,18 @@ class BillsScreen extends ConsumerWidget {
                             Container(
                               width: 8,
                               height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppColors.primary,
+                              decoration: BoxDecoration(
+                                color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 8),
                             Text(
                               'Paid This Month (${paidBills.length})',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.darkTextPrimary,
+                                color: context.textPrimary,
                               ),
                             ),
                           ],
@@ -174,10 +188,13 @@ class BillsScreen extends ConsumerWidget {
                     ],
                   );
                 },
-                loading: () => const Center(
+                loading: () => Center(
                   child: Padding(
-                    padding: EdgeInsets.only(top: 80),
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                    padding: const EdgeInsets.only(top: 80),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                    ),
                   ),
                 ),
                 error: (e, _) => Center(
@@ -188,6 +205,7 @@ class BillsScreen extends ConsumerWidget {
                 ),
               ),
             ],
+            ),
           ),
         ),
       ),
@@ -201,16 +219,15 @@ class BillsScreen extends ConsumerWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Monthly Bills',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
-                color: AppColors.darkTextPrimary,
+                color: context.textPrimary,
               ),
             ),
-
           ],
         ),
         GestureDetector(
@@ -263,15 +280,15 @@ class BillsScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.darkCardBg,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkCardBorder),
+        border: Border.all(color: context.cardBorder),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left_rounded, color: AppColors.darkTextPrimary, size: 24),
+            icon: Icon(Icons.chevron_left_rounded, color: context.textPrimary, size: 24),
             visualDensity: VisualDensity.compact,
             onPressed: () => ref.read(selectedBillsMonthProvider.notifier).prevMonth(),
           ),
@@ -289,14 +306,14 @@ class BillsScreen extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.calendar_month_outlined, size: 16, color: AppColors.primaryLight),
+                Icon(Icons.calendar_month_outlined, size: 16, color: context.accentIconColor),
                 const SizedBox(width: 8),
                 Text(
                   '$monthName $year',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.darkTextPrimary,
+                    color: context.textPrimary,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -304,16 +321,16 @@ class BillsScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
+                      color: context.isDark ? AppColors.primary.withValues(alpha: 0.15) : const Color(0xFFDCFCE7),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      border: Border.all(color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.3)),
                     ),
-                    child: const Text(
+                    child: Text(
                       'This Month',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primaryLight,
+                        color: context.accentLinkColor,
                       ),
                     ),
                   )
@@ -326,17 +343,17 @@ class BillsScreen extends ConsumerWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: context.inputBg,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.replay_rounded, size: 11, color: AppColors.darkTextSecondary),
-                          SizedBox(width: 3),
+                          Icon(Icons.replay_rounded, size: 11, color: context.textSecondary),
+                          const SizedBox(width: 3),
                           Text(
                             'Today',
-                            style: TextStyle(fontSize: 10, color: AppColors.darkTextSecondary),
+                            style: TextStyle(fontSize: 10, color: context.textSecondary),
                           ),
                         ],
                       ),
@@ -346,7 +363,7 @@ class BillsScreen extends ConsumerWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_right_rounded, color: AppColors.darkTextPrimary, size: 24),
+            icon: Icon(Icons.chevron_right_rounded, color: context.textPrimary, size: 24),
             visualDensity: VisualDensity.compact,
             onPressed: () => ref.read(selectedBillsMonthProvider.notifier).nextMonth(),
           ),
@@ -355,15 +372,15 @@ class BillsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAllPaidCard(DateTime selectedMonth) {
+  Widget _buildAllPaidCard(BuildContext context, DateTime selectedMonth) {
     final monthName = _monthNames[selectedMonth.month - 1];
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
+        color: context.isDark ? AppColors.primary.withValues(alpha: 0.08) : const Color(0xFFDCFCE7),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -371,28 +388,28 @@ class BillsScreen extends ConsumerWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.2),
+              color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check_circle_rounded, color: AppColors.primaryLight, size: 24),
+            child: Icon(Icons.check_circle_rounded, color: context.accentIconColor, size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'All Bills Paid!',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.darkTextPrimary,
+                    color: context.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'All scheduled bills for $monthName ${selectedMonth.year} are completely paid.',
-                  style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
+                  style: TextStyle(fontSize: 12, color: context.textSecondary),
                 ),
               ],
             ),
@@ -412,26 +429,26 @@ class BillsScreen extends ConsumerWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
+                color: context.inputBg,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.darkCardBorder),
+                border: Border.all(color: context.cardBorder),
               ),
-              child: const Icon(Icons.receipt_long_outlined, size: 36, color: AppColors.darkTextMuted),
+              child: Icon(Icons.receipt_long_outlined, size: 36, color: context.textMuted),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'No bills registered yet',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.darkTextPrimary,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Add your recurring internet, utilities, or rent\nto get reminders and track monthly payments.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.darkTextSecondary, height: 1.4),
+              style: TextStyle(fontSize: 13, color: context.textSecondary, height: 1.4),
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
@@ -452,7 +469,7 @@ class BillsScreen extends ConsumerWidget {
   }
 }
 
-class _MonthlyOverviewCard extends StatelessWidget {
+class _MonthlyOverviewCard extends StatefulWidget {
   const _MonthlyOverviewCard({
     required this.bills,
     required this.paidCount,
@@ -468,40 +485,62 @@ class _MonthlyOverviewCard extends StatelessWidget {
   final DateTime selectedMonth;
 
   @override
+  State<_MonthlyOverviewCard> createState() => _MonthlyOverviewCardState();
+}
+
+class _MonthlyOverviewCardState extends State<_MonthlyOverviewCard> {
+  String? _selectedCurrency;
+
+  @override
   Widget build(BuildContext context) {
-    final totalCount = bills.length;
-    final progress = totalCount > 0 ? (paidCount / totalCount).clamp(0.0, 1.0) : 0.0;
+    // Determine available currencies
+    final availableCurrencies = widget.bills.map((b) => b.currency).toSet().toList();
+    availableCurrencies.sort((a, b) => a == 'IDR' ? -1 : b == 'IDR' ? 1 : a.compareTo(b));
 
-    // Calculate Paid vs Remaining summary strings
-    final paidTotals = <String, num>{};
-    for (final p in paidPayments) {
-      final bill = bills.where((b) => b.id == p.billId).firstOrNull;
-      final currency = bill?.currency ?? 'IDR';
-      final amount = p.amountPaid ?? bill?.amount ?? 0;
-      paidTotals[currency] = (paidTotals[currency] ?? 0) + amount;
+    final activeCurrency = _selectedCurrency != null && availableCurrencies.contains(_selectedCurrency)
+        ? _selectedCurrency!
+        : (availableCurrencies.isNotEmpty ? availableCurrencies.first : 'IDR');
+
+    // Filter bills and payments for active currency
+    final currencyBills = widget.bills.where((b) => b.currency == activeCurrency).toList();
+    final currencyPaidPayments = widget.paidPayments.where((p) {
+      final bill = widget.bills.where((b) => b.id == p.billId).firstOrNull;
+      return bill != null && bill.currency == activeCurrency;
+    }).toList();
+    final currencyUnpaidBills = widget.unpaidBills.where((b) => b.currency == activeCurrency).toList();
+
+    final currencyTotalCount = currencyBills.length;
+    final currencyPaidCount = currencyPaidPayments.length;
+    final progress = currencyTotalCount > 0 ? (currencyPaidCount / currencyTotalCount).clamp(0.0, 1.0) : 0.0;
+
+    // Calculate Paid total
+    num paidTotal = 0;
+    for (final p in currencyPaidPayments) {
+      final bill = widget.bills.where((b) => b.id == p.billId).firstOrNull;
+      paidTotal += p.amountPaid ?? bill?.amount ?? 0;
     }
 
-    final remainingTotals = <String, num>{};
-    for (final b in unpaidBills) {
-      remainingTotals[b.currency] = (remainingTotals[b.currency] ?? 0) + b.amount;
+    // Calculate Remaining total
+    num remainingTotal = 0;
+    for (final b in currencyUnpaidBills) {
+      remainingTotal += b.amount;
     }
 
-    String formatGrouped(Map<String, num> map, {String emptyText = '0'}) {
-      if (map.isEmpty) return emptyText;
-      return map.entries
-          .map((e) => '${e.key} ${CurrencyInputFormatter.format(e.value)}')
-          .join(' + ');
-    }
+    final symbol = activeCurrency == 'IDR'
+        ? 'Rp'
+        : activeCurrency == 'MYR'
+            ? 'RM'
+            : activeCurrency;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.darkCardBg,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.darkCardBorder),
+        border: Border.all(color: context.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
+            color: Colors.black.withValues(alpha: context.isDark ? 0.25 : 0.05),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -513,51 +552,97 @@ class _MonthlyOverviewCard extends StatelessWidget {
           // Top Progress Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'MONTHLY PROGRESS',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.0,
-                      color: AppColors.darkTextSecondary,
+                      color: context.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '$paidCount of $totalCount Bills Paid',
-                    style: const TextStyle(
+                    '$currencyPaidCount of $currencyTotalCount Bills Paid',
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.darkTextPrimary,
+                      color: context.textPrimary,
                     ),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: progress == 1.0
-                      ? AppColors.primary.withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: progress == 1.0
-                        ? AppColors.primary
-                        : Colors.white.withValues(alpha: 0.12),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Currency Switcher Pills (shown if multiple currencies exist)
+                  if (availableCurrencies.length > 1) ...[
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: context.inputBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: context.cardBorder),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: availableCurrencies.map((cur) {
+                          final isSelected = cur == activeCurrency;
+                          return GestureDetector(
+                            onTap: () => setState(() => _selectedCurrency = cur),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.primary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              child: Text(
+                                cur,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: isSelected ? Colors.black : context.textSecondary,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  // Percentage Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: progress == 1.0
+                          ? AppColors.primary.withValues(alpha: 0.2)
+                          : context.inputBg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: progress == 1.0
+                            ? AppColors.primary
+                            : context.cardBorder,
+                      ),
+                    ),
+                    child: Text(
+                      '${(progress * 100).toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: progress == 1.0
+                            ? (context.isDark ? AppColors.primaryLight : const Color(0xFF15803D))
+                            : context.textPrimary,
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  '${(progress * 100).toStringAsFixed(0)}%',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: progress == 1.0 ? AppColors.primaryLight : AppColors.darkTextPrimary,
-                  ),
-                ),
+                ],
               ),
             ],
           ),
@@ -570,17 +655,19 @@ class _MonthlyOverviewCard extends StatelessWidget {
               height: 8,
               child: Stack(
                 children: [
-                  Container(color: Colors.white.withValues(alpha: 0.08)),
+                  Container(color: context.cardBorder),
                   FractionallySizedBox(
                     widthFactor: progress,
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.primaryLight, AppColors.primary],
+                        gradient: LinearGradient(
+                          colors: context.isDark
+                              ? const [AppColors.primaryLight, AppColors.primary]
+                              : const [Color(0xFF059669), Color(0xFF15803D)],
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.5),
+                            color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.4),
                             blurRadius: 6,
                           ),
                         ],
@@ -593,86 +680,127 @@ class _MonthlyOverviewCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
 
-          // 2-Column Summary Cards
-          Row(
-            children: [
-              // Paid Col
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black26,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.check_circle_outline_rounded, size: 14, color: AppColors.primaryLight),
-                          SizedBox(width: 5),
-                          Text(
-                            'Paid So Far',
-                            style: TextStyle(fontSize: 11, color: AppColors.darkTextSecondary, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        formatGrouped(paidTotals),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primaryLight,
+          // 2-Column Symmetrical Summary Cards
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Paid Col
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: context.isDark ? Colors.white.withValues(alpha: 0.04) : context.inputBg,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: context.cardBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.check_circle_outline_rounded,
+                                size: 13,
+                                color: context.accentIconColor,
+                              ),
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              'Paid So Far',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: context.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 10),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '$symbol ${CurrencyInputFormatter.format(paidTotal)}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
+                              color: context.isDark ? AppColors.primaryLight : const Color(0xFF15803D),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
+                const SizedBox(width: 12),
 
-              // Remaining Col
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black26,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.pending_actions_rounded, size: 14, color: AppColors.orange),
-                          SizedBox(width: 5),
-                          Text(
-                            'Remaining Due',
-                            style: TextStyle(fontSize: 11, color: AppColors.darkTextSecondary, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        formatGrouped(remainingTotals),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: remainingTotals.isNotEmpty ? AppColors.orange : AppColors.darkTextMuted,
+                // Remaining Col
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: context.isDark ? Colors.white.withValues(alpha: 0.04) : context.inputBg,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: context.cardBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.orange.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.pending_actions_rounded,
+                                size: 13,
+                                color: AppColors.orange,
+                              ),
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              'Remaining Due',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: context.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 10),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '$symbol ${CurrencyInputFormatter.format(remainingTotal)}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
+                              color: remainingTotal > 0 ? AppColors.orange : context.textMuted,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -719,22 +847,22 @@ class _UnpaidBillCard extends StatelessWidget {
         statusBadgeTextColor = AppColors.red;
       } else {
         statusBadgeText = 'Due in $daysLeft ${daysLeft == 1 ? 'day' : 'days'}';
-        statusBadgeColor = Colors.white.withValues(alpha: 0.08);
-        statusBadgeTextColor = AppColors.darkTextSecondary;
+        statusBadgeColor = context.inputBg;
+        statusBadgeTextColor = context.textSecondary;
       }
     } else {
       statusBadgeText = 'Due on ${bill.dueDay}th';
-      statusBadgeColor = Colors.white.withValues(alpha: 0.08);
-      statusBadgeTextColor = AppColors.darkTextSecondary;
+      statusBadgeColor = context.inputBg;
+      statusBadgeTextColor = context.textSecondary;
     }
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.darkCardBg,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isOverdue ? AppColors.red.withValues(alpha: 0.5) : AppColors.darkCardBorder,
+          color: isOverdue ? AppColors.red.withValues(alpha: 0.5) : context.cardBorder,
           width: isOverdue ? 1.5 : 1.0,
         ),
         boxShadow: [
@@ -758,12 +886,12 @@ class _UnpaidBillCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isOverdue
                       ? AppColors.red.withValues(alpha: 0.15)
-                      : AppColors.primary.withValues(alpha: 0.15),
+                      : (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.receipt_long_rounded,
-                  color: isOverdue ? AppColors.red : AppColors.primary,
+                  color: isOverdue ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF15803D)),
                   size: 20,
                 ),
               ),
@@ -774,17 +902,17 @@ class _UnpaidBillCard extends StatelessWidget {
                   children: [
                     Text(
                       bill.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.darkTextPrimary,
+                        color: context.textPrimary,
                       ),
                     ),
                     if (accountName != null) ...[
                       const SizedBox(height: 2),
                       Text(
                         'Account: $accountName',
-                        style: const TextStyle(fontSize: 11, color: AppColors.darkTextSecondary),
+                        style: TextStyle(fontSize: 11, color: context.textSecondary),
                       ),
                     ],
                   ],
@@ -800,7 +928,7 @@ class _UnpaidBillCard extends StatelessWidget {
                         ? AppColors.red
                         : isDueToday
                             ? AppColors.orange
-                            : AppColors.darkCardBorder,
+                            : context.cardBorder,
                   ),
                 ),
                 child: Text(
@@ -825,18 +953,18 @@ class _UnpaidBillCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Bill Amount',
-                    style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted),
+                    style: TextStyle(fontSize: 11, color: context.textMuted),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${bill.currency} ${CurrencyInputFormatter.format(bill.amount)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.3,
-                      color: AppColors.darkTextPrimary,
+                      color: context.textPrimary,
                     ),
                   ),
                 ],
@@ -905,9 +1033,9 @@ class _PaidBillCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.darkCardBg.withValues(alpha: 0.6),
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: context.cardBorder),
       ),
       child: Row(
         children: [
@@ -915,10 +1043,10 @@ class _PaidBillCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
+              color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check_rounded, color: AppColors.primaryLight, size: 20),
+            child: Icon(Icons.check_rounded, color: context.isDark ? AppColors.primaryLight : const Color(0xFF15803D), size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -927,10 +1055,10 @@ class _PaidBillCard extends StatelessWidget {
               children: [
                 Text(
                   bill.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.darkTextPrimary,
+                    color: context.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -938,13 +1066,13 @@ class _PaidBillCard extends StatelessWidget {
                   children: [
                     Text(
                       paidDateText,
-                      style: const TextStyle(fontSize: 11, color: AppColors.darkTextSecondary),
+                      style: TextStyle(fontSize: 11, color: context.textSecondary),
                     ),
                     if (accountName != null) ...[
-                      const Text(' \u00b7 ', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
+                      Text(' \u00b7 ', style: TextStyle(fontSize: 11, color: context.textMuted)),
                       Text(
                         accountName!,
-                        style: const TextStyle(fontSize: 11, color: AppColors.darkTextSecondary),
+                        style: TextStyle(fontSize: 11, color: context.textSecondary),
                       ),
                     ],
                   ],
@@ -958,25 +1086,25 @@ class _PaidBillCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
+                  color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
+                child: Text(
                   'PAID \u2713',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primaryLight,
+                    color: context.isDark ? AppColors.primaryLight : const Color(0xFF15803D),
                   ),
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 '${bill.currency} ${CurrencyInputFormatter.format(amountPaid)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.darkTextPrimary,
+                  color: context.textPrimary,
                 ),
               ),
             ],

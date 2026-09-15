@@ -41,6 +41,12 @@ class AccountRepository {
     }
   }
 
+  Future<void> activate(String accountId) async {
+    await supabase
+        .from('accounts')
+        .update({'is_active': true}).eq('id', accountId);
+  }
+
   Future<void> deactivate(String accountId) async {
     await supabase
         .from('accounts')

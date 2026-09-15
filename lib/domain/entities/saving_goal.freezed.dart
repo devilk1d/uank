@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SavingGoal {
 
- String get id;@JsonKey(name: 'user_id') String? get userId; String get name;@JsonKey(name: 'target_amount') num get targetAmount;@JsonKey(name: 'current_amount') num get currentAmount; String get currency;@JsonKey(name: 'target_date') String? get targetDate; String get icon; String get color;@JsonKey(name: 'is_completed') bool get isCompleted;@JsonKey(name: 'created_at') String? get createdAt;@JsonKey(name: 'updated_at') String? get updatedAt;
+ String get id;@JsonKey(name: 'user_id') String? get userId;@JsonKey(name: 'account_id') String? get accountId; String get name;@JsonKey(name: 'target_amount') num get targetAmount;@JsonKey(name: 'current_amount') num get currentAmount; String get currency;@JsonKey(name: 'target_date') String? get targetDate; String get icon; String get color;@JsonKey(name: 'is_completed') bool get isCompleted;@JsonKey(name: 'created_at') String? get createdAt;@JsonKey(name: 'updated_at') String? get updatedAt;
 /// Create a copy of SavingGoal
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $SavingGoalCopyWith<SavingGoal> get copyWith => _$SavingGoalCopyWithImpl<SavingG
 @override
 bool operator ==(Object other) {
   final _this = this as SavingGoal;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SavingGoal&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.userId, _this.userId) || other.userId == _this.userId)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.targetAmount, _this.targetAmount) || other.targetAmount == _this.targetAmount)&&(identical(other.currentAmount, _this.currentAmount) || other.currentAmount == _this.currentAmount)&&(identical(other.currency, _this.currency) || other.currency == _this.currency)&&(identical(other.targetDate, _this.targetDate) || other.targetDate == _this.targetDate)&&(identical(other.icon, _this.icon) || other.icon == _this.icon)&&(identical(other.color, _this.color) || other.color == _this.color)&&(identical(other.isCompleted, _this.isCompleted) || other.isCompleted == _this.isCompleted)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SavingGoal&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.userId, _this.userId) || other.userId == _this.userId)&&(identical(other.accountId, _this.accountId) || other.accountId == _this.accountId)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.targetAmount, _this.targetAmount) || other.targetAmount == _this.targetAmount)&&(identical(other.currentAmount, _this.currentAmount) || other.currentAmount == _this.currentAmount)&&(identical(other.currency, _this.currency) || other.currency == _this.currency)&&(identical(other.targetDate, _this.targetDate) || other.targetDate == _this.targetDate)&&(identical(other.icon, _this.icon) || other.icon == _this.icon)&&(identical(other.color, _this.color) || other.color == _this.color)&&(identical(other.isCompleted, _this.isCompleted) || other.isCompleted == _this.isCompleted)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as SavingGoal;
-  return Object.hash(runtimeType,_this.id,_this.userId,_this.name,_this.targetAmount,_this.currentAmount,_this.currency,_this.targetDate,_this.icon,_this.color,_this.isCompleted,_this.createdAt,_this.updatedAt);
+  return Object.hash(runtimeType,_this.id,_this.userId,_this.accountId,_this.name,_this.targetAmount,_this.currentAmount,_this.currency,_this.targetDate,_this.icon,_this.color,_this.isCompleted,_this.createdAt,_this.updatedAt);
 }
 
 @override
 String toString() {
   final _this = this as SavingGoal;
-  return 'SavingGoal(id: ${_this.id}, userId: ${_this.userId}, name: ${_this.name}, targetAmount: ${_this.targetAmount}, currentAmount: ${_this.currentAmount}, currency: ${_this.currency}, targetDate: ${_this.targetDate}, icon: ${_this.icon}, color: ${_this.color}, isCompleted: ${_this.isCompleted}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
+  return 'SavingGoal(id: ${_this.id}, userId: ${_this.userId}, accountId: ${_this.accountId}, name: ${_this.name}, targetAmount: ${_this.targetAmount}, currentAmount: ${_this.currentAmount}, currency: ${_this.currency}, targetDate: ${_this.targetDate}, icon: ${_this.icon}, color: ${_this.color}, isCompleted: ${_this.isCompleted}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -54,7 +54,7 @@ abstract mixin class $SavingGoalCopyWith<$Res>  {
   factory $SavingGoalCopyWith(SavingGoal value, $Res Function(SavingGoal) _then) = _$SavingGoalCopyWithImpl;
 @useResult
 $Res call({
- String id,@JsonKey(name: 'user_id') String? userId, String name,@JsonKey(name: 'target_amount') num targetAmount,@JsonKey(name: 'current_amount') num currentAmount, String currency,@JsonKey(name: 'target_date') String? targetDate, String icon, String color,@JsonKey(name: 'is_completed') bool isCompleted,@JsonKey(name: 'created_at') String? createdAt,@JsonKey(name: 'updated_at') String? updatedAt
+ String id,@JsonKey(name: 'user_id') String? userId,@JsonKey(name: 'account_id') String? accountId, String name,@JsonKey(name: 'target_amount') num targetAmount,@JsonKey(name: 'current_amount') num currentAmount, String currency,@JsonKey(name: 'target_date') String? targetDate, String icon, String color,@JsonKey(name: 'is_completed') bool isCompleted,@JsonKey(name: 'created_at') String? createdAt,@JsonKey(name: 'updated_at') String? updatedAt
 });
 
 
@@ -71,10 +71,11 @@ class _$SavingGoalCopyWithImpl<$Res>
 
 /// Create a copy of SavingGoal
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? userId = freezed,Object? name = null,Object? targetAmount = null,Object? currentAmount = null,Object? currency = null,Object? targetDate = freezed,Object? icon = null,Object? color = null,Object? isCompleted = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? userId = freezed,Object? accountId = freezed,Object? name = null,Object? targetAmount = null,Object? currentAmount = null,Object? currency = null,Object? targetDate = freezed,Object? icon = null,Object? color = null,Object? isCompleted = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(SavingGoal(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,userId: freezed == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String?,accountId: freezed == accountId ? _self.accountId : accountId // ignore: cast_nullable_to_non_nullable
 as String?,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,targetAmount: null == targetAmount ? _self.targetAmount : targetAmount // ignore: cast_nullable_to_non_nullable
 as num,currentAmount: null == currentAmount ? _self.currentAmount : currentAmount // ignore: cast_nullable_to_non_nullable
@@ -170,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'user_id')  String? userId,  String name, @JsonKey(name: 'target_amount')  num targetAmount, @JsonKey(name: 'current_amount')  num currentAmount,  String currency, @JsonKey(name: 'target_date')  String? targetDate,  String icon,  String color, @JsonKey(name: 'is_completed')  bool isCompleted, @JsonKey(name: 'created_at')  String? createdAt, @JsonKey(name: 'updated_at')  String? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'user_id')  String? userId, @JsonKey(name: 'account_id')  String? accountId,  String name, @JsonKey(name: 'target_amount')  num targetAmount, @JsonKey(name: 'current_amount')  num currentAmount,  String currency, @JsonKey(name: 'target_date')  String? targetDate,  String icon,  String color, @JsonKey(name: 'is_completed')  bool isCompleted, @JsonKey(name: 'created_at')  String? createdAt, @JsonKey(name: 'updated_at')  String? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SavingGoal() when $default != null:
-return $default(_that.id,_that.userId,_that.name,_that.targetAmount,_that.currentAmount,_that.currency,_that.targetDate,_that.icon,_that.color,_that.isCompleted,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.userId,_that.accountId,_that.name,_that.targetAmount,_that.currentAmount,_that.currency,_that.targetDate,_that.icon,_that.color,_that.isCompleted,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -191,10 +192,10 @@ return $default(_that.id,_that.userId,_that.name,_that.targetAmount,_that.curren
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'user_id')  String? userId,  String name, @JsonKey(name: 'target_amount')  num targetAmount, @JsonKey(name: 'current_amount')  num currentAmount,  String currency, @JsonKey(name: 'target_date')  String? targetDate,  String icon,  String color, @JsonKey(name: 'is_completed')  bool isCompleted, @JsonKey(name: 'created_at')  String? createdAt, @JsonKey(name: 'updated_at')  String? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'user_id')  String? userId, @JsonKey(name: 'account_id')  String? accountId,  String name, @JsonKey(name: 'target_amount')  num targetAmount, @JsonKey(name: 'current_amount')  num currentAmount,  String currency, @JsonKey(name: 'target_date')  String? targetDate,  String icon,  String color, @JsonKey(name: 'is_completed')  bool isCompleted, @JsonKey(name: 'created_at')  String? createdAt, @JsonKey(name: 'updated_at')  String? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _SavingGoal():
-return $default(_that.id,_that.userId,_that.name,_that.targetAmount,_that.currentAmount,_that.currency,_that.targetDate,_that.icon,_that.color,_that.isCompleted,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.userId,_that.accountId,_that.name,_that.targetAmount,_that.currentAmount,_that.currency,_that.targetDate,_that.icon,_that.color,_that.isCompleted,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -211,10 +212,10 @@ return $default(_that.id,_that.userId,_that.name,_that.targetAmount,_that.curren
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id, @JsonKey(name: 'user_id')  String? userId,  String name, @JsonKey(name: 'target_amount')  num targetAmount, @JsonKey(name: 'current_amount')  num currentAmount,  String currency, @JsonKey(name: 'target_date')  String? targetDate,  String icon,  String color, @JsonKey(name: 'is_completed')  bool isCompleted, @JsonKey(name: 'created_at')  String? createdAt, @JsonKey(name: 'updated_at')  String? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id, @JsonKey(name: 'user_id')  String? userId, @JsonKey(name: 'account_id')  String? accountId,  String name, @JsonKey(name: 'target_amount')  num targetAmount, @JsonKey(name: 'current_amount')  num currentAmount,  String currency, @JsonKey(name: 'target_date')  String? targetDate,  String icon,  String color, @JsonKey(name: 'is_completed')  bool isCompleted, @JsonKey(name: 'created_at')  String? createdAt, @JsonKey(name: 'updated_at')  String? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _SavingGoal() when $default != null:
-return $default(_that.id,_that.userId,_that.name,_that.targetAmount,_that.currentAmount,_that.currency,_that.targetDate,_that.icon,_that.color,_that.isCompleted,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.userId,_that.accountId,_that.name,_that.targetAmount,_that.currentAmount,_that.currency,_that.targetDate,_that.icon,_that.color,_that.isCompleted,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -226,11 +227,12 @@ return $default(_that.id,_that.userId,_that.name,_that.targetAmount,_that.curren
 @JsonSerializable()
 
 class _SavingGoal implements SavingGoal {
-  const _SavingGoal({required this.id, @JsonKey(name: 'user_id') this.userId, required this.name, @JsonKey(name: 'target_amount') required this.targetAmount, @JsonKey(name: 'current_amount') this.currentAmount = 0, required this.currency, @JsonKey(name: 'target_date') this.targetDate, this.icon = 'savings', this.color = '#CCFF00', @JsonKey(name: 'is_completed') this.isCompleted = false, @JsonKey(name: 'created_at') this.createdAt, @JsonKey(name: 'updated_at') this.updatedAt});
+  const _SavingGoal({required this.id, @JsonKey(name: 'user_id') this.userId, @JsonKey(name: 'account_id') this.accountId, required this.name, @JsonKey(name: 'target_amount') required this.targetAmount, @JsonKey(name: 'current_amount') this.currentAmount = 0, required this.currency, @JsonKey(name: 'target_date') this.targetDate, this.icon = 'savings', this.color = '#CCFF00', @JsonKey(name: 'is_completed') this.isCompleted = false, @JsonKey(name: 'created_at') this.createdAt, @JsonKey(name: 'updated_at') this.updatedAt});
   factory _SavingGoal.fromJson(Map<String, dynamic> json) => _$SavingGoalFromJson(json);
 
 @override final  String id;
 @override@JsonKey(name: 'user_id') final  String? userId;
+@override@JsonKey(name: 'account_id') final  String? accountId;
 @override final  String name;
 @override@JsonKey(name: 'target_amount') final  num targetAmount;
 @override@JsonKey(name: 'current_amount') final  num currentAmount;
@@ -255,18 +257,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SavingGoal&&(identical(other.id, id) || other.id == id)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.name, name) || other.name == name)&&(identical(other.targetAmount, targetAmount) || other.targetAmount == targetAmount)&&(identical(other.currentAmount, currentAmount) || other.currentAmount == currentAmount)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.targetDate, targetDate) || other.targetDate == targetDate)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.color, color) || other.color == color)&&(identical(other.isCompleted, isCompleted) || other.isCompleted == isCompleted)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SavingGoal&&(identical(other.id, id) || other.id == id)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.accountId, accountId) || other.accountId == accountId)&&(identical(other.name, name) || other.name == name)&&(identical(other.targetAmount, targetAmount) || other.targetAmount == targetAmount)&&(identical(other.currentAmount, currentAmount) || other.currentAmount == currentAmount)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.targetDate, targetDate) || other.targetDate == targetDate)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.color, color) || other.color == color)&&(identical(other.isCompleted, isCompleted) || other.isCompleted == isCompleted)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,userId,name,targetAmount,currentAmount,currency,targetDate,icon,color,isCompleted,createdAt,updatedAt);
+    return Object.hash(runtimeType,id,userId,accountId,name,targetAmount,currentAmount,currency,targetDate,icon,color,isCompleted,createdAt,updatedAt);
 }
 
 @override
 String toString() {
-    return 'SavingGoal(id: $id, userId: $userId, name: $name, targetAmount: $targetAmount, currentAmount: $currentAmount, currency: $currency, targetDate: $targetDate, icon: $icon, color: $color, isCompleted: $isCompleted, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'SavingGoal(id: $id, userId: $userId, accountId: $accountId, name: $name, targetAmount: $targetAmount, currentAmount: $currentAmount, currency: $currency, targetDate: $targetDate, icon: $icon, color: $color, isCompleted: $isCompleted, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -277,7 +279,7 @@ abstract mixin class _$SavingGoalCopyWith<$Res> implements $SavingGoalCopyWith<$
   factory _$SavingGoalCopyWith(_SavingGoal value, $Res Function(_SavingGoal) _then) = __$SavingGoalCopyWithImpl;
 @override @useResult
 $Res call({
- String id,@JsonKey(name: 'user_id') String? userId, String name,@JsonKey(name: 'target_amount') num targetAmount,@JsonKey(name: 'current_amount') num currentAmount, String currency,@JsonKey(name: 'target_date') String? targetDate, String icon, String color,@JsonKey(name: 'is_completed') bool isCompleted,@JsonKey(name: 'created_at') String? createdAt,@JsonKey(name: 'updated_at') String? updatedAt
+ String id,@JsonKey(name: 'user_id') String? userId,@JsonKey(name: 'account_id') String? accountId, String name,@JsonKey(name: 'target_amount') num targetAmount,@JsonKey(name: 'current_amount') num currentAmount, String currency,@JsonKey(name: 'target_date') String? targetDate, String icon, String color,@JsonKey(name: 'is_completed') bool isCompleted,@JsonKey(name: 'created_at') String? createdAt,@JsonKey(name: 'updated_at') String? updatedAt
 });
 
 
@@ -294,10 +296,11 @@ class __$SavingGoalCopyWithImpl<$Res>
 
 /// Create a copy of SavingGoal
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? userId = freezed,Object? name = null,Object? targetAmount = null,Object? currentAmount = null,Object? currency = null,Object? targetDate = freezed,Object? icon = null,Object? color = null,Object? isCompleted = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? userId = freezed,Object? accountId = freezed,Object? name = null,Object? targetAmount = null,Object? currentAmount = null,Object? currency = null,Object? targetDate = freezed,Object? icon = null,Object? color = null,Object? isCompleted = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_SavingGoal(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,userId: freezed == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String?,accountId: freezed == accountId ? _self.accountId : accountId // ignore: cast_nullable_to_non_nullable
 as String?,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,targetAmount: null == targetAmount ? _self.targetAmount : targetAmount // ignore: cast_nullable_to_non_nullable
 as num,currentAmount: null == currentAmount ? _self.currentAmount : currentAmount // ignore: cast_nullable_to_non_nullable

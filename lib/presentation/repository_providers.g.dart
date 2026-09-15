@@ -21,7 +21,7 @@ final class AuthRepositoryProvider
         argument: null,
         retry: null,
         name: r'authRepositoryProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -48,7 +48,7 @@ final class AuthRepositoryProvider
   }
 }
 
-String _$authRepositoryHash() => r'50a1d563eb512e3d26c62f7d6917fbcc58928eef';
+String _$authRepositoryHash() => r'b1845c21e89227820af003689c9437f06a070ee3';
 
 @ProviderFor(accountRepository)
 final accountRepositoryProvider = AccountRepositoryProvider._();
@@ -67,7 +67,7 @@ final class AccountRepositoryProvider
         argument: null,
         retry: null,
         name: r'accountRepositoryProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -95,7 +95,7 @@ final class AccountRepositoryProvider
   }
 }
 
-String _$accountRepositoryHash() => r'507924a1939d23ea1882c0a539b90eb34a6365df';
+String _$accountRepositoryHash() => r'c59b93cdf43fb3848dca2a1798eac7bf481b3040';
 
 @ProviderFor(categoryRepository)
 final categoryRepositoryProvider = CategoryRepositoryProvider._();
@@ -114,7 +114,7 @@ final class CategoryRepositoryProvider
         argument: null,
         retry: null,
         name: r'categoryRepositoryProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -143,7 +143,7 @@ final class CategoryRepositoryProvider
 }
 
 String _$categoryRepositoryHash() =>
-    r'd8d3e5b7740feab730115db44733d043622426fb';
+    r'456a5ad6317a837626b1ef88e128af8350acdc1f';
 
 @ProviderFor(transactionRepository)
 final transactionRepositoryProvider = TransactionRepositoryProvider._();
@@ -162,7 +162,7 @@ final class TransactionRepositoryProvider
         argument: null,
         retry: null,
         name: r'transactionRepositoryProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -191,7 +191,7 @@ final class TransactionRepositoryProvider
 }
 
 String _$transactionRepositoryHash() =>
-    r'0a0b4fadfdb7845c03e1b30b8fd35507e0c9687a';
+    r'6f0d6147120c8677a26d42288ac578a685cca795';
 
 @ProviderFor(transferRepository)
 final transferRepositoryProvider = TransferRepositoryProvider._();
@@ -210,7 +210,7 @@ final class TransferRepositoryProvider
         argument: null,
         retry: null,
         name: r'transferRepositoryProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -239,7 +239,7 @@ final class TransferRepositoryProvider
 }
 
 String _$transferRepositoryHash() =>
-    r'96bc36375d423ebd759d0aca63a7f755d261ac4c';
+    r'1bccc624b0c5aff1a6fa0c81be4ab744290793b8';
 
 @ProviderFor(billRepository)
 final billRepositoryProvider = BillRepositoryProvider._();
@@ -253,7 +253,7 @@ final class BillRepositoryProvider
         argument: null,
         retry: null,
         name: r'billRepositoryProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -280,7 +280,7 @@ final class BillRepositoryProvider
   }
 }
 
-String _$billRepositoryHash() => r'6903f88abbf6bf4c0b2a8d146a8726a40d9a3428';
+String _$billRepositoryHash() => r'70b01df693d6ad3324d8395baecb7e30ea29006f';
 
 @ProviderFor(exchangeRateRepository)
 final exchangeRateRepositoryProvider = ExchangeRateRepositoryProvider._();
@@ -299,7 +299,7 @@ final class ExchangeRateRepositoryProvider
         argument: null,
         retry: null,
         name: r'exchangeRateRepositoryProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -328,7 +328,7 @@ final class ExchangeRateRepositoryProvider
 }
 
 String _$exchangeRateRepositoryHash() =>
-    r'582a16bbd8672232a00730f4862c57674adc287f';
+    r'b9fd55f060becedb25df9c2b198ec2697eeb03a6';
 
 @ProviderFor(deviceTokenRepository)
 final deviceTokenRepositoryProvider = DeviceTokenRepositoryProvider._();
@@ -347,7 +347,7 @@ final class DeviceTokenRepositoryProvider
         argument: null,
         retry: null,
         name: r'deviceTokenRepositoryProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -376,7 +376,7 @@ final class DeviceTokenRepositoryProvider
 }
 
 String _$deviceTokenRepositoryHash() =>
-    r'f60977baa22b633bdd78c79af0bd57b9f6a5864e';
+    r'71d01d159cd17b560428a9806b97f7d0de3eed58';
 
 @ProviderFor(savingGoalRepository)
 final savingGoalRepositoryProvider = SavingGoalRepositoryProvider._();
@@ -395,7 +395,7 @@ final class SavingGoalRepositoryProvider
         argument: null,
         retry: null,
         name: r'savingGoalRepositoryProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -424,4 +424,4 @@ final class SavingGoalRepositoryProvider
 }
 
 String _$savingGoalRepositoryHash() =>
-    r'd1d3b49aa51fe401fbfe0af46f023572a62dd3e9';
+    r'990ee5b8311cd8ca178e8e0301becdce35922b7c';

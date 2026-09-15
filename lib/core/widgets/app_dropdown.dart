@@ -23,7 +23,7 @@ class AppDropdownItem<T> {
 }
 
 /// A compact, sleek pill/button dropdown for filters, timeframe pickers, and view options.
-/// Matches the neo-fintech dark obsidian and electric lime theme.
+/// Adapts dynamically to light and dark modes.
 class AppFilterDropdown<T> extends StatelessWidget {
   const AppFilterDropdown({
     super.key,
@@ -52,10 +52,15 @@ class AppFilterDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final selectedItem = items.firstWhere(
       (item) => item.value == value,
       orElse: () => items.isNotEmpty ? items.first : AppDropdownItem<T>(value: value, label: '$value'),
     );
+
+    final bg = backgroundColor ?? (isDark ? Colors.black45 : Colors.white);
+    final border = borderColor ?? (isDark ? AppColors.darkCardBorder : AppColors.lightCardBorder);
+    final txtColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
 
     return Material(
       color: Colors.transparent,
@@ -65,9 +70,18 @@ class AppFilterDropdown<T> extends StatelessWidget {
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: backgroundColor ?? Colors.black45,
+            color: bg,
             borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(color: borderColor ?? AppColors.darkCardBorder),
+            border: Border.all(color: border),
+            boxShadow: isDark
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -85,14 +99,14 @@ class AppFilterDropdown<T> extends StatelessWidget {
                     GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.darkTextSecondary,
+                      color: txtColor,
                     ),
               ),
               const SizedBox(width: 4),
               Icon(
                 Icons.keyboard_arrow_down_rounded,
                 size: 16,
-                color: chevronColor ?? AppColors.darkTextSecondary,
+                color: chevronColor ?? txtColor,
               ),
             ],
           ),
@@ -102,6 +116,7 @@ class AppFilterDropdown<T> extends StatelessWidget {
   }
 
   void _showMenu(BuildContext context) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
@@ -119,12 +134,15 @@ class AppFilterDropdown<T> extends StatelessWidget {
     final selected = await showMenu<T>(
       context: context,
       position: position,
-      color: AppColors.darkCardBg,
+      color: isDark ? AppColors.darkCardBg : Colors.white,
       elevation: 16,
-      shadowColor: Colors.black.withValues(alpha: 0.8),
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.8 : 0.15),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.darkCardBorder, width: 1.2),
+        side: BorderSide(
+          color: isDark ? AppColors.darkCardBorder : AppColors.lightCardBorder,
+          width: 1.2,
+        ),
       ),
       items: items.map((item) {
         final isSelected = item.value == value;
@@ -135,10 +153,15 @@ class AppFilterDropdown<T> extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+              color: isSelected
+                  ? (isDark ? AppColors.primary.withValues(alpha: 0.12) : const Color(0xFF15803D).withValues(alpha: 0.08))
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
               border: isSelected
-                  ? Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1)
+                  ? Border.all(
+                      color: isDark ? AppColors.primary.withValues(alpha: 0.3) : const Color(0xFF15803D).withValues(alpha: 0.3),
+                      width: 1,
+                    )
                   : null,
             ),
             child: Row(
@@ -154,16 +177,18 @@ class AppFilterDropdown<T> extends StatelessWidget {
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? AppColors.primary : Colors.white,
+                      color: isSelected
+                          ? (isDark ? AppColors.primary : const Color(0xFF15803D))
+                          : (isDark ? Colors.white : AppColors.lightTextPrimary),
                     ),
                   ),
                 ),
                 if (isSelected) ...[
                   const SizedBox(width: 8),
-                  const Icon(
+                  Icon(
                     Icons.check_rounded,
                     size: 16,
-                    color: AppColors.primary,
+                    color: isDark ? AppColors.primary : const Color(0xFF15803D),
                   ),
                 ],
               ],
@@ -179,12 +204,15 @@ class AppFilterDropdown<T> extends StatelessWidget {
   }
 }
 
-/// A form field dropdown that matches the neo-fintech input styling and opens
-/// an interactive, searchable dark bottom sheet selector with custom items.
+/// A form field dropdown that matches the input styling and opens
+/// an interactive, searchable bottom sheet selector with custom items.
 class AppDropdownFormField<T> extends FormField<T> {
+  final T? value;
+
   AppDropdownFormField({
     super.key,
-    super.initialValue,
+    this.value,
+    T? initialValue,
     required List<AppDropdownItem<T>> items,
     required ValueChanged<T?>? onChanged,
     String? labelText,
@@ -194,6 +222,7 @@ class AppDropdownFormField<T> extends FormField<T> {
     bool enableSearch = false,
     String? sheetTitle,
   }) : super(
+          initialValue: value ?? initialValue,
           builder: (FormFieldState<T> state) {
             return _AppDropdownFieldContent<T>(
               state: state,
@@ -207,6 +236,24 @@ class AppDropdownFormField<T> extends FormField<T> {
             );
           },
         );
+
+  @override
+  FormFieldState<T> createState() => _AppDropdownFormFieldState<T>();
+}
+
+class _AppDropdownFormFieldState<T> extends FormFieldState<T> {
+  @override
+  AppDropdownFormField<T> get widget => super.widget as AppDropdownFormField<T>;
+
+  @override
+  void didUpdateWidget(AppDropdownFormField<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value && widget.value != value) {
+      setValue(widget.value);
+    } else if (widget.initialValue != oldWidget.initialValue && widget.initialValue != value) {
+      setValue(widget.initialValue);
+    }
+  }
 }
 
 class _AppDropdownFieldContent<T> extends StatelessWidget {
@@ -232,8 +279,15 @@ class _AppDropdownFieldContent<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final selectedItem = items.where((item) => item.value == state.value).firstOrNull;
     final hasError = state.hasError;
+
+    final cardBg = isDark ? AppColors.darkCardBg : Colors.white;
+    final cardBorder = isDark ? AppColors.darkCardBorder : AppColors.lightCardBorder;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final textMuted = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -245,7 +299,7 @@ class _AppDropdownFieldContent<T> extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: hasError ? AppColors.red : AppColors.darkTextSecondary,
+              color: hasError ? AppColors.red : textSecondary,
             ),
           ),
           const SizedBox(height: 6),
@@ -256,12 +310,21 @@ class _AppDropdownFieldContent<T> extends StatelessWidget {
             height: 50,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: AppColors.darkCardBg,
+              color: cardBg,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: hasError ? AppColors.red : AppColors.darkCardBorder,
+                color: hasError ? AppColors.red : cardBorder,
                 width: hasError ? 1.5 : 1.0,
               ),
+              boxShadow: isDark
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
             ),
             child: Row(
               children: [
@@ -277,7 +340,7 @@ class _AppDropdownFieldContent<T> extends StatelessWidget {
                       ? Text(
                           selectedItem.label,
                           style: GoogleFonts.plusJakartaSans(
-                            color: AppColors.darkTextPrimary,
+                            color: textPrimary,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -287,16 +350,16 @@ class _AppDropdownFieldContent<T> extends StatelessWidget {
                       : Text(
                           hintText ?? 'Select option',
                           style: GoogleFonts.plusJakartaSans(
-                            color: AppColors.darkTextMuted,
+                            color: textMuted,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                 ),
                 const SizedBox(width: 6),
-                const Icon(
+                Icon(
                   Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.primary,
+                  color: isDark ? AppColors.primary : textSecondary,
                   size: 20,
                 ),
               ],
@@ -390,16 +453,24 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final maxHeight = MediaQuery.of(context).size.height * 0.75;
 
+    final cardBg = isDark ? AppColors.darkCardBg : Colors.white;
+    final cardBorder = isDark ? AppColors.darkCardBorder : AppColors.lightCardBorder;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final textMuted = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
+    final itemUnselectedBg = isDark ? const Color(0xFF202128) : const Color(0xFFF8FAFC);
+
     return Container(
       constraints: BoxConstraints(maxHeight: maxHeight),
-      decoration: const BoxDecoration(
-        color: AppColors.darkCardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border(
-          top: BorderSide(color: AppColors.darkCardBorder, width: 1.5),
+          top: BorderSide(color: cardBorder, width: 1.5),
         ),
       ),
       padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + bottomInset),
@@ -413,7 +484,7 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.darkTextMuted,
+                color: textMuted.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -429,7 +500,7 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.darkTextPrimary,
+                    color: textPrimary,
                   ),
                 ),
               ),
@@ -438,10 +509,10 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
+                    color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close_rounded, size: 18, color: AppColors.darkTextSecondary),
+                  child: Icon(Icons.close_rounded, size: 18, color: textSecondary),
                 ),
               ),
             ],
@@ -453,23 +524,28 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
             Container(
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.black45,
+                color: isDark ? Colors.black45 : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.darkCardBorder),
+                border: Border.all(color: cardBorder),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.search_rounded, size: 18, color: AppColors.darkTextSecondary),
+                  Icon(Icons.search_rounded, size: 18, color: textSecondary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                       controller: _searchController,
-                      style: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppColors.darkTextPrimary),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13, color: textPrimary),
                       decoration: InputDecoration(
                         hintText: 'Search...',
-                        hintStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppColors.darkTextMuted),
+                        hintStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: textMuted),
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        filled: false,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -478,7 +554,7 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
                   if (_searchController.text.isNotEmpty)
                     GestureDetector(
                       onTap: () => _searchController.clear(),
-                      child: const Icon(Icons.clear_rounded, size: 16, color: AppColors.darkTextSecondary),
+                      child: Icon(Icons.clear_rounded, size: 16, color: textSecondary),
                     ),
                 ],
               ),
@@ -495,7 +571,7 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
                       child: Text(
                         'No matching options',
                         style: GoogleFonts.plusJakartaSans(
-                          color: AppColors.darkTextMuted,
+                          color: textMuted,
                           fontSize: 13,
                         ),
                       ),
@@ -515,13 +591,13 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? AppColors.primary.withValues(alpha: 0.12)
-                                : const Color(0xFF202128),
+                                ? (isDark ? AppColors.primary.withValues(alpha: 0.12) : const Color(0xFF15803D).withValues(alpha: 0.08))
+                                : itemUnselectedBg,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.darkCardBorder.withValues(alpha: 0.6),
+                                  ? (isDark ? AppColors.primary : const Color(0xFF15803D))
+                                  : cardBorder.withValues(alpha: 0.6),
                               width: isSelected ? 1.5 : 1,
                             ),
                           ),
@@ -541,7 +617,9 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 14,
                                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                                        color: isSelected ? AppColors.primary : AppColors.darkTextPrimary,
+                                        color: isSelected
+                                            ? (isDark ? AppColors.primary : const Color(0xFF15803D))
+                                            : textPrimary,
                                       ),
                                     ),
                                     if (item.subtitle != null) ...[
@@ -550,7 +628,7 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
                                         item.subtitle!,
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 12,
-                                          color: AppColors.darkTextSecondary,
+                                          color: textSecondary,
                                         ),
                                       ),
                                     ],
@@ -563,9 +641,9 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
                               ],
                               if (isSelected) ...[
                                 const SizedBox(width: 8),
-                                const Icon(
+                                Icon(
                                   Icons.check_circle_rounded,
-                                  color: AppColors.primary,
+                                  color: isDark ? AppColors.primary : const Color(0xFF15803D),
                                   size: 20,
                                 ),
                               ],
@@ -582,7 +660,7 @@ class _AppDropdownSheetState<T> extends State<_AppDropdownSheet<T>> {
   }
 }
 
-/// A reusable 3-dots action popup menu matching the obsidian & neon theme.
+/// A reusable 3-dots action popup menu matching the light and dark theme.
 class AppPopupMenu<T> extends StatelessWidget {
   const AppPopupMenu({
     super.key,
@@ -599,16 +677,22 @@ class AppPopupMenu<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? AppColors.darkCardBg : Colors.white;
+    final cardBorder = isDark ? AppColors.darkCardBorder : AppColors.lightCardBorder;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+
     return PopupMenuButton<T>(
       tooltip: tooltip,
-      color: AppColors.darkCardBg,
+      color: cardBg,
       elevation: 16,
-      shadowColor: Colors.black.withValues(alpha: 0.8),
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.8 : 0.15),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.darkCardBorder, width: 1.2),
+        side: BorderSide(color: cardBorder, width: 1.2),
       ),
-      icon: icon ?? const Icon(Icons.more_vert_rounded, size: 18, color: AppColors.darkTextSecondary),
+      icon: icon ?? Icon(Icons.more_vert_rounded, size: 18, color: textSecondary),
       onSelected: onSelected,
       itemBuilder: (_) => items.map((item) {
         return PopupMenuItem<T>(
@@ -626,7 +710,7 @@ class AppPopupMenu<T> extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: item.isDestructive ? AppColors.red : Colors.white,
+                    color: item.isDestructive ? AppColors.red : textPrimary,
                   ),
                 ),
               ),

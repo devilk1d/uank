@@ -26,7 +26,7 @@ final class SavingGoalsProvider
         argument: null,
         retry: null,
         name: r'savingGoalsProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -46,4 +46,4 @@ final class SavingGoalsProvider
   }
 }
 
-String _$savingGoalsHash() => r'871bc26c1f59b1a5b9561f2a77e87f5072ecc6a2';
+String _$savingGoalsHash() => r'424a8d6df2b8bcf4ad36d61206329224a96c7b15';

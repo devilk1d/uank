@@ -34,6 +34,7 @@ class MainShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final index = ref.watch(bottomNavIndexProvider);
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final navBottomPos = bottomInset > 0 ? bottomInset + 8 : 20.0;
@@ -44,20 +45,30 @@ class MainShell extends ConsumerWidget {
     final paidBillIds = payments.where((p) => p.status == 'paid').map((p) => p.billId).toSet();
     final unpaidBillsCount = activeBills.where((b) => !paidBillIds.contains(b.id)).length;
 
+    final navBg = isDark
+        ? const Color(0xFF18181D).withValues(alpha: 0.82)
+        : Colors.white.withValues(alpha: 0.92);
+    final navBorder = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : const Color(0xFFE2E8F0);
+    final fadeColor = isDark
+        ? const Color(0xFF0E0E10)
+        : Colors.white;
+
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           // 1. Screens Stack (Full Screen)
           IndexedStack(index: index, children: _screens),
 
-          // 2. Bottom Fading Gradient Overlay (Translucent black fade)
+          // 2. Bottom Fading Gradient Overlay (Fades seamlessly in both Dark & Light modes)
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            height: 150 + bottomInset,
+            height: 140 + bottomInset,
             child: IgnorePointer(
               child: Container(
                 decoration: BoxDecoration(
@@ -65,10 +76,10 @@ class MainShell extends ConsumerWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.transparent,
-                      const Color(0xFF0E0E10).withValues(alpha: 0.35),
-                      const Color(0xFF0E0E10).withValues(alpha: 0.8),
-                      const Color(0xFF0E0E10).withValues(alpha: 0.98),
+                      fadeColor.withValues(alpha: 0.0),
+                      fadeColor.withValues(alpha: isDark ? 0.35 : 0.25),
+                      fadeColor.withValues(alpha: isDark ? 0.80 : 0.75),
+                      fadeColor.withValues(alpha: isDark ? 0.98 : 0.95),
                     ],
                     stops: const [0.0, 0.35, 0.7, 1.0],
                   ),
@@ -77,7 +88,7 @@ class MainShell extends ConsumerWidget {
             ),
           ),
 
-          // 3. Floating Glassmorphism Navigation Bar
+          // 3. Floating Navigation Bar
           Positioned(
             left: 20,
             right: 20,
@@ -90,24 +101,37 @@ class MainShell extends ConsumerWidget {
                   height: 64,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF18181D).withValues(alpha: 0.82),
+                    color: navBg,
                     borderRadius: BorderRadius.circular(32),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.12),
+                      color: navBorder,
                       width: 1.2,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        blurRadius: 28,
-                        offset: const Offset(0, 10),
-                      ),
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.05),
-                        blurRadius: 16,
-                        spreadRadius: 1,
-                      ),
-                    ],
+                    boxShadow: isDark
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              blurRadius: 28,
+                              offset: const Offset(0, 10),
+                            ),
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.05),
+                              blurRadius: 16,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 12,
+                              spreadRadius: 1,
+                            ),
+                          ],
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -116,24 +140,28 @@ class MainShell extends ConsumerWidget {
                         icon: Icons.home_rounded,
                         label: 'Home',
                         active: index == 0,
+                        isDark: isDark,
                         onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(0),
                       ),
                       _NavItem(
                         icon: Icons.receipt_long_rounded,
                         label: 'Transactions',
                         active: index == 1,
+                        isDark: isDark,
                         onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(1),
                       ),
                       _NavItem(
                         icon: Icons.account_balance_wallet_rounded,
                         label: 'Accounts',
                         active: index == 2,
+                        isDark: isDark,
                         onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(2),
                       ),
                       _NavItem(
                         icon: Icons.notifications_active_rounded,
                         label: 'Bills',
                         active: index == 3,
+                        isDark: isDark,
                         badgeCount: unpaidBillsCount,
                         onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(3),
                       ),
@@ -141,6 +169,7 @@ class MainShell extends ConsumerWidget {
                         icon: Icons.savings_rounded,
                         label: 'Goals',
                         active: index == 4,
+                        isDark: isDark,
                         onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(4),
                       ),
                     ],
@@ -160,6 +189,7 @@ class _NavItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.active,
+    required this.isDark,
     required this.onTap,
     this.badgeCount = 0,
   });
@@ -167,11 +197,14 @@ class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
+  final bool isDark;
   final VoidCallback onTap;
   final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
+    final inactiveColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -192,7 +225,7 @@ class _NavItem extends StatelessWidget {
               child: Icon(
                 icon,
                 size: 22,
-                color: active ? Colors.black : AppColors.darkTextSecondary,
+                color: active ? Colors.black : inactiveColor,
               ),
             ),
           ),
@@ -206,7 +239,10 @@ class _NavItem extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.red,
-                  border: Border.all(color: const Color(0xFF18181D), width: 1.5),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF18181D) : Colors.white,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),

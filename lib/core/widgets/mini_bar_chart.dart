@@ -5,13 +5,13 @@ class MiniBarChart extends StatelessWidget {
   const MiniBarChart({
     super.key,
     this.barHeights,
-    this.barColor = AppColors.primary,
+    this.barColor,
     this.barCount = 16,
     this.height = 20,
   });
 
   final List<double>? barHeights;
-  final Color barColor;
+  final Color? barColor;
   final int barCount;
   final double height;
 
@@ -24,6 +24,7 @@ class MiniBarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final values = barHeights ?? _defaultPattern;
+    final effectiveColor = barColor ?? (context.isDark ? AppColors.primary : const Color(0xFF15803D));
 
     return SizedBox(
       height: height,
@@ -38,7 +39,7 @@ class MiniBarChart extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 1.5),
               height: height * val,
               decoration: BoxDecoration(
-                color: barColor.withValues(alpha: opacity),
+                color: effectiveColor.withValues(alpha: opacity),
                 borderRadius: BorderRadius.circular(2.5),
               ),
             ),

@@ -27,15 +27,16 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.darkTextPrimary),
         titleTextStyle: GoogleFonts.plusJakartaSans(
           color: AppColors.darkTextPrimary,
           fontSize: 18,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w800,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.black45,
+        fillColor: AppColors.darkInputBg,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -60,6 +61,14 @@ class AppTheme {
         labelStyle: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
         hintStyle: const TextStyle(color: AppColors.darkTextMuted, fontSize: 13),
       ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.darkCardBg,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.darkCardBorder,
+        thickness: 1,
+      ),
       useMaterial3: true,
     );
   }
@@ -69,18 +78,64 @@ class AppTheme {
 
     return ThemeData(
       brightness: Brightness.light,
-      scaffoldBackgroundColor: AppColors.lightBgEnd,
+      scaffoldBackgroundColor: AppColors.lightBackground,
       colorScheme: const ColorScheme.light(
-        primary: AppColors.primaryDark,
-        secondary: AppColors.primary,
+        primary: AppColors.lightAccentGreen,
+        secondary: AppColors.lightAccentTeal,
         error: AppColors.red,
-        surface: Colors.white,
+        surface: AppColors.lightCardBg,
+        onSurface: AppColors.lightTextPrimary,
       ),
       textTheme: baseTextTheme.apply(
         bodyColor: AppColors.lightTextPrimary,
         displayColor: AppColors.lightTextPrimary,
       ),
       iconTheme: const IconThemeData(color: AppColors.lightTextPrimary),
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.lightTextPrimary),
+        titleTextStyle: GoogleFonts.plusJakartaSans(
+          color: AppColors.lightTextPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.lightInputBg,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.lightCardBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.lightCardBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.lightAccentGreen, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.red, width: 1.0),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.red, width: 1.5),
+        ),
+        labelStyle: const TextStyle(color: AppColors.lightTextSecondary, fontSize: 13),
+        hintStyle: const TextStyle(color: AppColors.lightTextMuted, fontSize: 13),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.lightCardBg,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.lightCardBorder,
+        thickness: 1,
+      ),
       useMaterial3: true,
     );
   }

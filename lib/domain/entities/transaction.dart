@@ -14,6 +14,7 @@ abstract class Transaction with _$Transaction {
     @JsonKey(name: 'amount_idr') num? amountIdr,
     String? description,
     @JsonKey(name: 'transaction_date') required DateTime transactionDate,
+    @JsonKey(name: 'created_at') DateTime? createdAt,
   }) = _Transaction;
 
   factory Transaction.fromJson(Map<String, dynamic> json) =>

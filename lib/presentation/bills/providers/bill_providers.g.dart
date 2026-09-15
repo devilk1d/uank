@@ -26,7 +26,7 @@ final class BillsProvider
         argument: null,
         retry: null,
         name: r'billsProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -45,7 +45,7 @@ final class BillsProvider
   }
 }
 
-String _$billsHash() => r'0e7c254ed7230b565c1febc9db02d6dbe25ae94d';
+String _$billsHash() => r'927efd49de93e648d2dea234a451ad6fdc8d5a4d';
 
 @ProviderFor(currentMonthBillPayments)
 final currentMonthBillPaymentsProvider = CurrentMonthBillPaymentsProvider._();
@@ -66,7 +66,7 @@ final class CurrentMonthBillPaymentsProvider
         argument: null,
         retry: null,
         name: r'currentMonthBillPaymentsProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -87,4 +87,4 @@ final class CurrentMonthBillPaymentsProvider
 }
 
 String _$currentMonthBillPaymentsHash() =>
-    r'f081951f55f15723c7694d8430b00acd0432cef8';
+    r'0b4e76bb78e19f7a8d05b9846172e2c93f02c27f';

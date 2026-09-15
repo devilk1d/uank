@@ -15,6 +15,9 @@ _Transfer _$TransferFromJson(Map<String, dynamic> json) => _Transfer(
   exchangeRate: json['exchange_rate'] as num,
   transferDate: DateTime.parse(json['transfer_date'] as String),
   notes: json['notes'] as String?,
+  createdAt: json['created_at'] == null
+      ? null
+      : DateTime.parse(json['created_at'] as String),
 );
 
 Map<String, dynamic> _$TransferToJson(_Transfer instance) => <String, dynamic>{
@@ -26,4 +29,5 @@ Map<String, dynamic> _$TransferToJson(_Transfer instance) => <String, dynamic>{
   'exchange_rate': instance.exchangeRate,
   'transfer_date': instance.transferDate.toIso8601String(),
   'notes': instance.notes,
+  'created_at': instance.createdAt?.toIso8601String(),
 };
