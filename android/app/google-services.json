@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "249030466583",
+    "project_id": "projects-d5fa8",
+    "storage_bucket": "projects-d5fa8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:249030466583:android:11d97238c3d89869091052",
+        "android_client_info": {
+          "package_name": "com.example.uank"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDpQHQKEJfJ_DFFkZPROoNPAkZBGbrpCw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -8,10 +8,12 @@
 // lain (accounts, transactions, dst) akan mengembalikan hasil kosong,
 // bukan error — karena RLS diam-diam menyaring "tidak ada baris milikmu".
 
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/config/supabase_client.dart';
+import '../services/push_notification_service.dart';
+import 'supabase_client.dart';
 
 class AuthRepository {
   /// Current logged-in Supabase user
@@ -61,17 +63,53 @@ class AuthRepository {
     );
   }
 
+  Future<AuthResponse> verifyOtp({
+    required String email,
+    required String token,
+    required OtpType type,
+  }) async {
+    final response = await supabase.auth.verifyOTP(
+      email: email,
+      token: token,
+      type: type,
+    );
+    if (response.session != null) {
+      unawaited(PushNotificationService.instance.syncTokenWithBackend());
+    }
+    return response;
+  }
+
+  Future<void> resendOtp({
+    required String email,
+    required OtpType type,
+  }) async {
+    await supabase.auth.resend(
+      type: type == OtpType.signup ? OtpType.signup : OtpType.email,
+      email: email,
+    );
+  }
+
+  Future<void> resetPasswordForEmail(String email) async {
+    await supabase.auth.resetPasswordForEmail(email);
+  }
+
   Future<void> signIn({
     required String email,
     required String password,
   }) async {
     await supabase.auth.signInWithPassword(email: email, password: password);
+    unawaited(PushNotificationService.instance.syncTokenWithBackend());
   }
 
-  Future<UserResponse> updateProfile({String? fullName, String? avatarUrl}) async {
+  Future<UserResponse> updateProfile({
+    String? fullName,
+    String? avatarUrl,
+    Map<String, dynamic>? extraData,
+  }) async {
     final data = <String, dynamic>{};
     if (fullName != null) data['full_name'] = fullName;
     if (avatarUrl != null) data['avatar_url'] = avatarUrl;
+    if (extraData != null) data.addAll(extraData);
 
     return await supabase.auth.updateUser(
       UserAttributes(data: data),
@@ -120,7 +158,28 @@ class AuthRepository {
     );
   }
 
+  Future<void> deleteAccount() async {
+    final user = currentUser;
+    if (user == null) throw Exception('No user logged in');
+
+    // 1. Remove FCM device token registration
+    await PushNotificationService.instance.removeCurrentToken();
+
+    // 2. Clean up avatar file if exists
+    final avatarUrl = user.userMetadata?['avatar_url'] as String?;
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      await deleteAvatarFile(avatarUrl);
+    }
+
+    // 3. Call Supabase RPC to delete user and all cascading database records
+    await supabase.rpc('delete_user_account');
+
+    // 4. Clear auth session
+    await supabase.auth.signOut();
+  }
+
   Future<void> signOut() async {
+    await PushNotificationService.instance.removeCurrentToken();
     await supabase.auth.signOut();
   }
 }

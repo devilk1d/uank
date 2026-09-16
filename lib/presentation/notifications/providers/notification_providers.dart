@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../accounts/providers/account_providers.dart';
 import '../../bills/providers/bill_providers.dart';
 import '../../exchange_rates/providers/exchange_rate_providers.dart';
+import '../../saving_goals/providers/saving_goal_providers.dart';
 import '../../transfers/providers/transfer_providers.dart';
 import '../models/app_notification_item.dart';
 
@@ -162,6 +163,28 @@ final notificationsProvider = Provider<List<AppNotificationItem>>((ref) {
         timestamp: now.subtract(const Duration(hours: 3)),
         isRead: readIds.contains('low_balance_${balance.accountId}'),
         actionLabel: 'Top Up / Transfer',
+      ));
+    }
+  }
+
+  // 5. SAVING GOALS MILESTONES
+  final savingGoalsList = ref.watch(savingGoalsProvider).asData?.value ?? [];
+  for (final goal in savingGoalsList) {
+    final target = goal.targetAmount;
+    final current = goal.currentAmount;
+    if (target > 0 && current >= target) {
+      final amtStr = goal.currency == 'MYR'
+          ? 'RM ${_formatNum(target)}'
+          : 'Rp ${_formatNum(target)}';
+      items.add(AppNotificationItem(
+        id: 'goal_completed_${goal.id}',
+        title: '🎯 Target Tabungan Tercapai: ${goal.name}',
+        message: 'Selamat! Target tabungan $amtStr telah tercapai 100%. Pertahankan disiplin keuanganmu!',
+        category: NotificationCategory.activity,
+        type: NotificationType.general,
+        timestamp: goal.createdAt != null ? (DateTime.tryParse(goal.createdAt!) ?? now) : now,
+        isRead: readIds.contains('goal_completed_${goal.id}'),
+        actionLabel: 'Lihat Tabungan',
       ));
     }
   }

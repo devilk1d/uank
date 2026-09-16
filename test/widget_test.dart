@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:uank/core/theme/app_colors.dart';
+import 'package:uank/core/utils/currency_formatter.dart';
 import 'package:uank/core/widgets/app_dropdown.dart';
 
 void main() {
@@ -78,6 +79,33 @@ void main() {
 
       expect(find.text('Test Text'), findsOneWidget);
     }
+  });
+
+  testWidgets('StepAllSet renders in English without emojis', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                Text("You're All Set"),
+                Text('Get Started'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text("You're All Set"), findsOneWidget);
+    expect(find.text('Get Started'), findsOneWidget);
+  });
+
+  test('CurrencyInputFormatter correctly formats and parses nominal numbers', () {
+    expect(CurrencyInputFormatter.format(1000000), '1.000.000');
+    expect(CurrencyInputFormatter.format(350000), '350.000');
+    expect(CurrencyInputFormatter.parse('1.000.000'), 1000000);
+    expect(CurrencyInputFormatter.parse('250,000'), 250000);
   });
 }
 

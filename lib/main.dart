@@ -1,8 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/config/supabase_client.dart';
 import 'core/theme/app_theme.dart';
+import 'firebase_options.dart';
 import 'presentation/auth/widgets/auth_gate.dart';
 import 'presentation/repository_providers.dart';
 import 'presentation/theme/theme_mode_provider.dart';
@@ -10,6 +12,13 @@ import 'presentation/theme/theme_mode_provider.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initSupabase();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('[Main] Firebase.initializeApp note: $e');
+  }
   runApp(const ProviderScope(child: UankApp()));
 }
 
@@ -43,6 +52,13 @@ class _UankAppState extends ConsumerState<UankApp> with WidgetsBindingObserver {
       // Whenever user re-opens or unlocks the app, silently refresh session if near expiry
       ref.read(authRepositoryProvider).refreshSessionIfNeeded();
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precacheImage(const AssetImage('lib/core/image/uanktext3.png'), context);
+    precacheImage(const AssetImage('lib/core/image/phone1.png'), context);
   }
 
   @override

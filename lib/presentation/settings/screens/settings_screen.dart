@@ -1,14 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/app_background.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/glass_card.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_confirmation_sheet.dart';
+import '../../../core/widgets/legal_document_sheet.dart';
+import '../../../core/utils/password_validator.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../categories/screens/categories_screen.dart';
 import '../../repository_providers.dart';
@@ -28,7 +33,6 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(appThemeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
-    final authRepo = ref.read(authRepositoryProvider);
     final userProfile = ref.watch(userProfileProvider);
 
     final displayName = userProfile?.displayName ?? 'User Account';
@@ -221,8 +225,63 @@ class SettingsScreen extends ConsumerWidget {
                           if (context.mounted) {
                             Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
                           }
-                          await authRepo.signOut();
+                          await ref.read(authRepositoryProvider).signOut();
                         }
+                      },
+                    ),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      height: 1,
+                      color: context.cardBorder,
+                    ),
+                    _SettingsItemTile(
+                      icon: Icons.delete_forever_rounded,
+                      iconColor: AppColors.red,
+                      title: 'Delete Account',
+                      subtitle: 'Permanently delete your account and all data',
+                      titleColor: AppColors.red,
+                      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.red),
+                      onTap: () => _showDeleteAccountSheet(context, ref),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // 5. LEGAL & POLICIES SECTION
+              _buildSectionTitle(context, 'LEGAL & POLICIES'),
+              const SizedBox(height: 8),
+              GlassCard(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                child: Column(
+                  children: [
+                    _SettingsItemTile(
+                      icon: Icons.verified_user_outlined,
+                      iconColor: isDark ? Colors.white : const Color(0xFF0F172A),
+                      title: 'Privacy Policy',
+                      subtitle: 'How we protect and encrypt your data',
+                      trailing: Icon(Icons.chevron_right_rounded, color: context.textSecondary),
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        LegalDocumentSheet.showPrivacyPolicy(context);
+                      },
+                    ),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      height: 1,
+                      color: context.cardBorder,
+                    ),
+                    _SettingsItemTile(
+                      icon: Icons.description_outlined,
+                      iconColor: isDark ? Colors.white : const Color(0xFF0F172A),
+                      title: 'Terms of Service',
+                      subtitle: 'Terms of use and service agreements',
+                      trailing: Icon(Icons.chevron_right_rounded, color: context.textSecondary),
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        LegalDocumentSheet.showTermsOfService(context);
                       },
                     ),
                   ],
@@ -230,13 +289,13 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 32),
 
-              // 5. BRANDED FOOTER WITH UANK LOGO
+              // 6. BRANDED FOOTER WITH UANK LOGO
               Center(
                 child: Column(
                   children: [
                     Image.asset(
-                      'lib/core/image/logo uank.png',
-                      height: 48,
+                      'lib/core/image/uanktext3.png',
+                      height: 35,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) => Container(
                         width: 44,
@@ -258,17 +317,7 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'UANK - Personal Finance',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 7),
                     Text(
                       'v1.0.0',
                       style: GoogleFonts.plusJakartaSans(
@@ -328,7 +377,7 @@ class SettingsScreen extends ConsumerWidget {
         ],
         Text(
           'Settings & Profile',
-          style: GoogleFonts.plusJakartaSans(
+          style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
@@ -700,16 +749,46 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _showChangePasswordSheet(BuildContext context, WidgetRef ref) {
+    final userProfile = ref.read(userProfileProvider);
+    final email = userProfile?.email ?? '';
+
+    final otpController = TextEditingController();
+    final otpFocusNode = FocusNode();
     final passwordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
-    bool isSaving = false;
-    bool obscure = true;
+
+    int step = 1; // 1 = Request, 2 = Verify OTP, 3 = Set New Password
+    bool isLoading = false;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    String? sheetError;
+    Timer? resendTimer;
+    int resendCountdown = 60;
+    bool canResend = false;
+
     final isDark = context.isDark;
     final cardBg = context.cardBg;
     final cardBorder = context.cardBorder;
     final textPrimary = context.textPrimary;
     final textSecondary = context.textSecondary;
     final textMuted = context.textMuted;
+    final primaryAccent = isDark ? AppColors.primary : const Color(0xFF15803D);
+
+    void startTimer(StateSetter setSheetState) {
+      resendTimer?.cancel();
+      setSheetState(() {
+        resendCountdown = 60;
+        canResend = false;
+      });
+      resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (resendCountdown > 1) {
+          setSheetState(() => resendCountdown--);
+        } else {
+          timer.cancel();
+          setSheetState(() => canResend = true);
+        }
+      });
+    }
 
     showModalBottomSheet(
       context: context,
@@ -719,6 +798,37 @@ class SettingsScreen extends ConsumerWidget {
         builder: (ctx, setSheetState) {
           final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
           final bottomPadding = MediaQuery.of(ctx).padding.bottom;
+
+          Future<void> submitVerifyOtp(String code) async {
+            if (code.length != 6 || isLoading) return;
+
+            FocusScope.of(ctx).unfocus();
+            setSheetState(() {
+              isLoading = true;
+              sheetError = null;
+            });
+
+            try {
+              await ref.read(authRepositoryProvider).verifyOtp(
+                email: email,
+                token: code,
+                type: OtpType.recovery,
+              );
+              if (ctx.mounted) {
+                setSheetState(() {
+                  isLoading = false;
+                  step = 3;
+                });
+              }
+            } catch (e) {
+              if (ctx.mounted) {
+                setSheetState(() {
+                  isLoading = false;
+                  sheetError = 'Invalid or expired verification code';
+                });
+              }
+            }
+          }
 
           return Container(
             padding: EdgeInsets.fromLTRB(22, 16, 22, 24 + bottomInset + bottomPadding),
@@ -745,124 +855,953 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 18),
+
+                  // STEP 1: Request Email Verification Code
+                  if (step == 1) ...[
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.orange.withValues(alpha: 0.15),
+                            border: Border.all(color: AppColors.orange.withValues(alpha: 0.3)),
+                          ),
+                          child: const Icon(Icons.shield_outlined, size: 20, color: AppColors.orange),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Change Password',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'For your security, we\'ll send a 6-digit verification code to your email address before you can set a new password.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w500,
+                        color: textSecondary,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: cardBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.alternate_email_rounded, size: 18, color: textSecondary),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              email,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: textPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    if (sheetError != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.red.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.red.withValues(alpha: 0.35)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, size: 16, color: AppColors.red),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                sheetError!,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: AppColors.red,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        onPressed: isLoading
+                            ? null
+                            : () async {
+                                setSheetState(() {
+                                  isLoading = true;
+                                  sheetError = null;
+                                });
+                                try {
+                                  await ref.read(authRepositoryProvider).resetPasswordForEmail(email);
+                                  setSheetState(() {
+                                    isLoading = false;
+                                    step = 2;
+                                  });
+                                  startTimer(setSheetState);
+                                } catch (e) {
+                                  setSheetState(() {
+                                    isLoading = false;
+                                    sheetError = e.toString().replaceAll('Exception:', '').trim();
+                                  });
+                                }
+                              },
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                              )
+                            : Text(
+                                'Send Verification Code',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+
+                  // STEP 2: Verify 6-Digit OTP Code
+                  if (step == 2) ...[
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: (isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.15),
+                            border: Border.all(color: (isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.3)),
+                          ),
+                          child: Icon(Icons.pin_outlined, size: 20, color: isDark ? AppColors.primaryLight : const Color(0xFF15803D)),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Verification Code',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text.rich(
+                      TextSpan(
+                        text: 'Enter the 6-digit code sent to ',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: textSecondary,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: email,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    if (sheetError != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.red.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.red.withValues(alpha: 0.35)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, size: 16, color: AppColors.red),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                sheetError!,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: AppColors.red,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // 6-BOX OTP INPUT
+                    Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Opacity(
+                            opacity: 0.0,
+                            child: TextField(
+                              controller: otpController,
+                              focusNode: otpFocusNode,
+                              autofocus: true,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(6),
+                              ],
+                              onChanged: (val) {
+                                setSheetState(() {});
+                                if (val.length == 6) {
+                                  submitVerifyOtp(val.trim());
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+
+                        GestureDetector(
+                          onTap: () => otpFocusNode.requestFocus(),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: List.generate(6, (index) {
+                              final otpText = otpController.text;
+                              final char = index < otpText.length ? otpText[index] : '';
+                              final isCurrent = index == otpText.length;
+                              final isFilled = index < otpText.length;
+
+                              return Container(
+                                width: 46,
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF1B1B22) : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isCurrent
+                                        ? primaryAccent
+                                        : isFilled
+                                            ? (isDark ? Colors.white.withValues(alpha: 0.3) : const Color(0xFF94A3B8))
+                                            : (isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFE2E8F0)),
+                                    width: isCurrent ? 1.8 : 1.2,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    char,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      color: textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Resend Timer Row
+                    Center(
+                      child: canResend
+                          ? GestureDetector(
+                              onTap: isLoading
+                                  ? null
+                                  : () async {
+                                      try {
+                                        await ref.read(authRepositoryProvider).resetPasswordForEmail(email);
+                                        startTimer(setSheetState);
+                                      } catch (e) {
+                                        setSheetState(() => sheetError = 'Failed to resend code');
+                                      }
+                                    },
+                              child: Text(
+                                'Resend verification code',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: primaryAccent,
+                                ),
+                              ),
+                            )
+                          : Text(
+                                'Resend code in ${resendCountdown}s',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: textSecondary,
+                                ),
+                              ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        onPressed: isLoading || otpController.text.length != 6
+                            ? null
+                            : () => submitVerifyOtp(otpController.text.trim()),
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                              )
+                            : Text(
+                                'Verify Code',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+
+                  // STEP 3: Enter New Password
+                  if (step == 3) ...[
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.orange.withValues(alpha: 0.15),
+                            border: Border.all(color: AppColors.orange.withValues(alpha: 0.3)),
+                          ),
+                          child: const Icon(Icons.lock_reset_rounded, size: 20, color: AppColors.orange),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Create New Password',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Identity confirmed. Enter your new password below.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    if (sheetError != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.red.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.red.withValues(alpha: 0.35)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, size: 16, color: AppColors.red),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                sheetError!,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: AppColors.red,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // New Password Field
+                    Text(
+                      'New Password',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: cardBorder),
+                      ),
+                      child: TextField(
+                        controller: passwordController,
+                        obscureText: obscureNew,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Min. 6 chars, A-Z, a-z, symbol',
+                          hintStyle: GoogleFonts.plusJakartaSans(
+                            color: textMuted,
+                            fontSize: 13.5,
+                          ),
+                          prefixIcon: Icon(Icons.lock_outline_rounded, size: 18, color: textSecondary),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              size: 18,
+                              color: textSecondary,
+                            ),
+                            onPressed: () => setSheetState(() => obscureNew = !obscureNew),
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Min. 6 chars with uppercase, lowercase & symbol (=, -, @, #, etc.)',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Confirm Password Field
+                    Text(
+                      'Confirm New Password',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: cardBorder),
+                      ),
+                      child: TextField(
+                        controller: confirmPasswordController,
+                        obscureText: obscureConfirm,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Repeat new password',
+                          hintStyle: GoogleFonts.plusJakartaSans(
+                            color: textMuted,
+                            fontSize: 13.5,
+                          ),
+                          prefixIcon: Icon(Icons.lock_outline_rounded, size: 18, color: textSecondary),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              size: 18,
+                              color: textSecondary,
+                            ),
+                            onPressed: () => setSheetState(() => obscureConfirm = !obscureConfirm),
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        onPressed: isLoading
+                            ? null
+                            : () async {
+                                final pass = passwordController.text;
+                                final confirmPass = confirmPasswordController.text;
+                                final validationError = PasswordValidator.validate(pass);
+                                if (validationError != null) {
+                                  setSheetState(() => sheetError = validationError);
+                                  return;
+                                }
+                                if (pass != confirmPass) {
+                                  setSheetState(() => sheetError = 'Passwords do not match');
+                                  return;
+                                }
+
+                                FocusScope.of(ctx).unfocus();
+                                setSheetState(() {
+                                  isLoading = true;
+                                  sheetError = null;
+                                });
+
+                                try {
+                                  await ref.read(authRepositoryProvider).updatePassword(pass);
+                                  if (ctx.mounted) {
+                                    setSheetState(() {
+                                      isLoading = false;
+                                      step = 4;
+                                    });
+                                  }
+                                } catch (e) {
+                                  if (ctx.mounted) {
+                                    setSheetState(() {
+                                      isLoading = false;
+                                      sheetError = e.toString().replaceAll('Exception:', '').trim();
+                                    });
+                                  }
+                                }
+                              },
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                              )
+                            : Text(
+                                'Update Password',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+
+                  // STEP 4: Success Confirmation View
+                  if (step == 4) ...[
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 10),
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.35), width: 2),
+                            ),
+                            child: const Icon(Icons.check_rounded, size: 36, color: AppColors.primary),
+                          ),
+                          const SizedBox(height: 18),
+                          Text(
+                            'Password Updated',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                              color: textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Your account password has been successfully updated.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w500,
+                                color: textSecondary,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 26),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.black,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                ),
+                              ),
+                              onPressed: () {
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx);
+                                }
+                              },
+                              child: Text(
+                                'Done',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    ).then((_) {
+      resendTimer?.cancel();
+      otpController.dispose();
+      otpFocusNode.dispose();
+      passwordController.dispose();
+      confirmPasswordController.dispose();
+    });
+  }
+
+  void _showDeleteAccountSheet(BuildContext context, WidgetRef ref) {
+    final confirmController = TextEditingController();
+    bool isLoading = false;
+    String? sheetError;
+
+    final isDark = context.isDark;
+    final cardBg = context.cardBg;
+    final cardBorder = context.cardBorder;
+    final textPrimary = context.textPrimary;
+    final textSecondary = context.textSecondary;
+    final textMuted = context.textMuted;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
+          final bottomPadding = MediaQuery.of(ctx).padding.bottom;
+          final isConfirmationMatched = confirmController.text.trim().toUpperCase() == 'DELETE';
+
+          return Container(
+            padding: EdgeInsets.fromLTRB(22, 16, 22, 24 + bottomInset + bottomPadding),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border(
+                top: BorderSide(color: cardBorder, width: 1.5),
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 38,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: textMuted.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Danger Header Row
                   Row(
                     children: [
                       Container(
-                        width: 40,
-                        height: 40,
+                        width: 42,
+                        height: 42,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.orange.withValues(alpha: 0.15),
-                          border: Border.all(color: AppColors.orange.withValues(alpha: 0.3)),
+                          color: AppColors.red.withValues(alpha: 0.15),
+                          border: Border.all(color: AppColors.red.withValues(alpha: 0.35), width: 1.5),
                         ),
-                        child: const Icon(Icons.lock_reset_rounded, size: 20, color: AppColors.orange),
+                        child: const Icon(Icons.delete_forever_rounded, size: 22, color: AppColors.red),
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        'Change Password',
+                        'Delete Account',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.3,
-                          color: textPrimary,
+                          color: AppColors.red,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 18),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: obscure,
-                    style: GoogleFonts.plusJakartaSans(color: textPrimary, fontSize: 15),
-                    decoration: InputDecoration(
-                      labelText: 'New Password',
-                      labelStyle: GoogleFonts.plusJakartaSans(color: textSecondary, fontSize: 13),
-                      filled: true,
-                      fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9),
-                      prefixIcon: Icon(Icons.lock_outline_rounded, color: textSecondary, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                          color: textSecondary,
-                          size: 20,
+                  const SizedBox(height: 14),
+
+                  // Warning Card
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.red.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.red.withValues(alpha: 0.25)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: AppColors.red, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Permanent & Irreversible',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.red,
+                              ),
+                            ),
+                          ],
                         ),
-                        onPressed: () => setSheetState(() => obscure = !obscure),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: cardBorder),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                      ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Deleting your account will permanently wipe all your financial accounts, transactions, bills, savings goals, categories, and personal data from our servers. You will lose access immediately.',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: confirmPasswordController,
-                    obscureText: obscure,
-                    style: GoogleFonts.plusJakartaSans(color: textPrimary, fontSize: 15),
-                    decoration: InputDecoration(
-                      labelText: 'Confirm New Password',
-                      labelStyle: GoogleFonts.plusJakartaSans(color: textSecondary, fontSize: 13),
-                      filled: true,
-                      fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9),
-                      prefixIcon: Icon(Icons.lock_outline_rounded, color: textSecondary, size: 20),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: cardBorder),
+                  const SizedBox(height: 20),
+
+                  if (sheetError != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.red.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.red.withValues(alpha: 0.35)),
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded, size: 16, color: AppColors.red),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              sheetError!,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                color: AppColors.red,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Confirmation text input
+                  Text.rich(
+                    TextSpan(
+                      text: 'To confirm deletion, please type ',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: textSecondary,
+                      ),
+                      children: const [
+                        TextSpan(
+                          text: 'DELETE',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.red,
+                          ),
+                        ),
+                        TextSpan(text: ' below:'),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isConfirmationMatched ? AppColors.red : cardBorder,
+                        width: isConfirmationMatched ? 1.5 : 1.0,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: confirmController,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                        color: textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Type DELETE to confirm',
+                        hintStyle: GoogleFonts.plusJakartaSans(
+                          color: textMuted,
+                          fontSize: 13,
+                          letterSpacing: 0.2,
+                        ),
+                        prefixIcon: const Icon(Icons.shield_outlined, size: 18, color: AppColors.red),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      ),
+                      onChanged: (_) => setSheetState(() {}),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Delete Account Action Button
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 50,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.black,
+                        backgroundColor: AppColors.red,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: AppColors.red.withValues(alpha: 0.35),
+                        disabledForegroundColor: Colors.white.withValues(alpha: 0.5),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(25),
                         ),
                       ),
-                      onPressed: isSaving
+                      onPressed: (!isConfirmationMatched || isLoading)
                           ? null
                           : () async {
-                              final pass = passwordController.text;
-                              final confirmPass = confirmPasswordController.text;
-                              if (pass.length < 6 || pass != confirmPass) {
-                                return;
-                              }
+                              FocusScope.of(ctx).unfocus();
+                              setSheetState(() {
+                                isLoading = true;
+                                sheetError = null;
+                              });
 
-                              setSheetState(() => isSaving = true);
                               try {
-                                await ref.read(authRepositoryProvider).updatePassword(pass);
-                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+                                }
+                                await ref.read(authRepositoryProvider).deleteAccount();
                               } catch (e) {
-                                setSheetState(() => isSaving = false);
+                                if (ctx.mounted) {
+                                  setSheetState(() {
+                                    isLoading = false;
+                                    sheetError = e.toString().replaceAll('Exception:', '').trim();
+                                  });
+                                }
                               }
                             },
-                      child: isSaving
+                      child: isLoading
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : Text(
-                              'Update Password',
+                              'Delete My Account Permanently',
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 15,
+                                fontSize: 14.5,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.2,
                               ),
                             ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Cancel Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: textSecondary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(23),
+                        ),
+                      ),
+                      onPressed: isLoading ? null : () => Navigator.pop(ctx),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -871,7 +1810,9 @@ class SettingsScreen extends ConsumerWidget {
           );
         },
       ),
-    );
+    ).then((_) {
+      confirmController.dispose();
+    });
   }
 }
 

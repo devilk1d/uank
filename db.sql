@@ -522,4 +522,94 @@ create policy "Users manage own device_tokens" on device_tokens
 alter table exchange_rates enable row level security;
 drop policy if exists "Anyone can read exchange rates" on exchange_rates;
 create policy "Anyone can read exchange rates" on exchange_rates
-  for select using (true);
+  for select using (true);
+
+
+-- =========================================================
+-- 9. FUNCTION: Hapus Akun Pengguna & Seluruh Datanya
+-- =========================================================
+create or replace function delete_user_account()
+returns void as $$
+declare
+  v_user_id uuid;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  -- Hapus token notifikasi
+  delete from public.device_tokens where user_id = v_user_id;
+
+  -- Hapus tagihan dan histori pembayaran
+  delete from public.bill_payments where user_id = v_user_id;
+  delete from public.bills where user_id = v_user_id;
+
+  -- Hapus saving goals
+  delete from public.saving_goals where user_id = v_user_id;
+
+  -- Hapus transfer & transaksi
+  delete from public.transfers where user_id = v_user_id;
+  delete from public.transactions where user_id = v_user_id;
+
+  -- Hapus kategori kustom
+  delete from public.categories where user_id = v_user_id;
+
+  -- Hapus akun keuangan
+  delete from public.accounts where user_id = v_user_id;
+
+  -- Hapus data autentikasi user dari auth.users
+  delete from auth.users where id = v_user_id;
+end;
+$$ language plpgsql security definer set search_path = public, auth;
+
+grant execute on function delete_user_account() to authenticated;
+
+
+-- =========================================================
+-- 10. FUNCTION: Ambil Tagihan yang Perlu Dikirimkan Pengingat (FCM)
+-- =========================================================
+create or replace function bills_due_for_reminder()
+returns table (
+  bill_id uuid,
+  user_id uuid,
+  bill_name text,
+  amount numeric,
+  currency text,
+  due_day integer,
+  days_remaining integer,
+  fcm_token text
+) as $$
+declare
+  v_current_day integer := extract(day from current_date)::integer;
+  v_current_month integer := extract(month from current_date)::integer;
+  v_current_year integer := extract(year from current_date)::integer;
+begin
+  return query
+  select 
+    b.id as bill_id,
+    b.user_id,
+    b.name as bill_name,
+    b.amount,
+    b.currency,
+    b.due_day,
+    (b.due_day - v_current_day) as days_remaining,
+    dt.fcm_token
+  from public.bills b
+  inner join public.device_tokens dt on dt.user_id = b.user_id
+  where b.is_active = true
+    and (b.due_day - v_current_day) >= 0
+    and (b.due_day - v_current_day) <= b.reminder_days_before
+    and not exists (
+      select 1 from public.bill_payments bp
+      where bp.bill_id = b.id
+        and bp.user_id = b.user_id
+        and bp.status = 'paid'
+        and extract(month from bp.period_month) = v_current_month
+        and extract(year from bp.period_month) = v_current_year
+    );
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+revoke all on function bills_due_for_reminder() from public, anon, authenticated;
+grant execute on function bills_due_for_reminder() to service_role;

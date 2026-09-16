@@ -83,6 +83,112 @@ final class IsLoggedInProvider extends $FunctionalProvider<bool, bool, bool>
 
 String _$isLoggedInHash() => r'a0353f4141f8c26c5702b61288211510312a3a7f';
 
+@ProviderFor(PasswordRecoveryMode)
+final passwordRecoveryModeProvider = PasswordRecoveryModeProvider._();
+
+final class PasswordRecoveryModeProvider
+    extends $NotifierProvider<PasswordRecoveryMode, bool> {
+  PasswordRecoveryModeProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'passwordRecoveryModeProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$passwordRecoveryModeHash();
+
+  @$internal
+  @override
+  PasswordRecoveryMode create() => PasswordRecoveryMode();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$passwordRecoveryModeHash() =>
+    r'f971191ba37c89c73fa121a9fedd02107504f30e';
+
+abstract class _$PasswordRecoveryMode extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<bool, bool>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<bool, bool>,
+              bool,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(AuthTransitionLock)
+final authTransitionLockProvider = AuthTransitionLockProvider._();
+
+final class AuthTransitionLockProvider
+    extends $NotifierProvider<AuthTransitionLock, AuthTransitionMode> {
+  AuthTransitionLockProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'authTransitionLockProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$authTransitionLockHash();
+
+  @$internal
+  @override
+  AuthTransitionLock create() => AuthTransitionLock();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AuthTransitionMode value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AuthTransitionMode>(value),
+    );
+  }
+}
+
+String _$authTransitionLockHash() =>
+    r'adc4a9971de93c30090d8fed1a9353869f235a66';
+
+abstract class _$AuthTransitionLock extends $Notifier<AuthTransitionMode> {
+  AuthTransitionMode build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AuthTransitionMode, AuthTransitionMode>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AuthTransitionMode, AuthTransitionMode>,
+              AuthTransitionMode,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
 @ProviderFor(UserProfile)
 final userProfileProvider = UserProfileProvider._();
 
@@ -115,7 +221,7 @@ final class UserProfileProvider
   }
 }
 
-String _$userProfileHash() => r'463854b4d71af3363b1ab3b4e605d2a9baf671fb';
+String _$userProfileHash() => r'6b4edd9e11ed793c87f8c30955180b4c166fdb7d';
 
 abstract class _$UserProfile extends $Notifier<UserProfileData?> {
   UserProfileData? build();

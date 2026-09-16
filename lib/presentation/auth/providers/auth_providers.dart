@@ -26,17 +26,46 @@ bool isLoggedIn(Ref ref) {
   return repo.isLoggedIn;
 }
 
+@riverpod
+class PasswordRecoveryMode extends _$PasswordRecoveryMode {
+  @override
+  bool build() => false;
+
+  void setMode(bool isRecovery) => state = isRecovery;
+}
+
+enum AuthTransitionMode {
+  none,
+  enteringApp,
+  exitingApp,
+}
+
+@riverpod
+class AuthTransitionLock extends _$AuthTransitionLock {
+  @override
+  AuthTransitionMode build() => AuthTransitionMode.none;
+
+  void setEntering() => state = AuthTransitionMode.enteringApp;
+  void setExiting() => state = AuthTransitionMode.exitingApp;
+  void reset() => state = AuthTransitionMode.none;
+  void setLocked(bool isLocked) {
+    state = isLocked ? AuthTransitionMode.enteringApp : AuthTransitionMode.none;
+  }
+}
+
 class UserProfileData {
   final String userId;
   final String email;
   final String displayName;
   final String? avatarUrl;
+  final bool hasCompletedOnboarding;
 
   const UserProfileData({
     required this.userId,
     required this.email,
     required this.displayName,
     this.avatarUrl,
+    this.hasCompletedOnboarding = false,
   });
 
   String get initialLetter => displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
@@ -54,6 +83,7 @@ class UserProfile extends _$UserProfile {
     final rawName = user.userMetadata?['full_name'] as String?;
     final avatarUrl = user.userMetadata?['avatar_url'] as String?;
     final email = user.email ?? 'user@uank.app';
+    final hasCompletedOnboarding = (user.userMetadata?['has_completed_onboarding'] as bool?) ?? false;
     final displayName = (rawName != null && rawName.trim().isNotEmpty)
         ? rawName.trim()
         : _deriveNameFromEmail(email);
@@ -63,12 +93,19 @@ class UserProfile extends _$UserProfile {
       email: email,
       displayName: displayName,
       avatarUrl: avatarUrl,
+      hasCompletedOnboarding: hasCompletedOnboarding,
     );
   }
 
   Future<void> updateName(String newName) async {
     final repo = ref.read(authRepositoryProvider);
     await repo.updateProfile(fullName: newName);
+    ref.invalidateSelf();
+  }
+
+  Future<void> completeOnboarding() async {
+    final repo = ref.read(authRepositoryProvider);
+    await repo.updateProfile(extraData: {'has_completed_onboarding': true});
     ref.invalidateSelf();
   }
 
