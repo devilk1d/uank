@@ -13,78 +13,8 @@ class AppBackground extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
-      color: isDark ? AppColors.darkBgEnd : AppColors.lightBackground,
-      child: Stack(
-        children: [
-          // Top ambient gradient
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 220,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: isDark
-                      ? const [
-                          AppColors.darkBgStart,
-                          AppColors.darkBgMid,
-                          AppColors.darkBgEnd,
-                        ]
-                      : const [
-                          AppColors.lightBgStart,
-                          AppColors.lightBgMid,
-                          AppColors.lightBgEnd,
-                        ],
-                  stops: const [0.0, 0.55, 1.0],
-                ),
-              ),
-            ),
-          ),
-
-          // Subtle top-right ambient glow spotlight
-          Positioned(
-            top: -80,
-            right: -30,
-            child: Container(
-              width: 240,
-              height: 240,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppColors.primary.withValues(alpha: isDark ? 0.18 : 0.12),
-                    AppColors.primary.withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Subtle top-left mint glow
-          Positioned(
-            top: -60,
-            left: -40,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppColors.teal.withValues(alpha: isDark ? 0.12 : 0.08),
-                    AppColors.teal.withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          child,
-        ],
-      ),
+      color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      child: child,
     );
   }
 }

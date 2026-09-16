@@ -844,8 +844,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       final acc = accountMap[t.accountId];
                       final isMyr = acc?.currency == 'MYR';
                       final formattedVal = isMyr
-                          ? 'RM ${t.amount % 1 == 0 ? t.amount.toStringAsFixed(0) : t.amount.toStringAsFixed(2)}'
-                          : 'Rp ${_formatRupiah(t.amount)}';
+                          ? 'RM ${_formatNumber(t.amount)}'
+                          : 'Rp ${_formatNumber(t.amount)}';
 
                       return _ActivityItem(
                         title: t.description?.isNotEmpty == true ? t.description! : (t.type == 'expense' ? 'Expense' : 'Income'),
@@ -878,35 +878,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  String _formatRupiah(num value) {
-    final s = value.toStringAsFixed(0);
+  static String _formatNumber(num value) {
+    if (value % 1 == 0) {
+      final s = value.abs().toStringAsFixed(0);
+      final buffer = StringBuffer();
+      for (int i = 0; i < s.length; i++) {
+        if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
+        buffer.write(s[i]);
+      }
+      return buffer.toString();
+    }
+    final parts = value.abs().toStringAsFixed(2).split('.');
+    final s = parts[0];
     final buffer = StringBuffer();
     for (int i = 0; i < s.length; i++) {
       if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
       buffer.write(s[i]);
     }
-    return buffer.toString();
+    return '${buffer.toString()},${parts[1]}';
   }
 
-  String _formatMyr(num value) {
-    if (value % 1 == 0) {
-      final s = value.toStringAsFixed(0);
-      final buffer = StringBuffer();
-      for (int i = 0; i < s.length; i++) {
-        if (i > 0 && (s.length - i) % 3 == 0) buffer.write(',');
-        buffer.write(s[i]);
-      }
-      return buffer.toString();
-    }
-    final parts = value.toStringAsFixed(2).split('.');
-    final s = parts[0];
-    final buffer = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buffer.write(',');
-      buffer.write(s[i]);
-    }
-    return '${buffer.toString()}.${parts[1]}';
-  }
+  String _formatRupiah(num value) => _formatNumber(value);
+
+  String _formatMyr(num value) => _formatNumber(value);
 }
 
 class _BentoMetricCard extends StatelessWidget {
@@ -1155,15 +1149,15 @@ class _ActivityItem extends StatelessWidget {
             height: 42,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: (isNegative ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.15),
+              color: (isNegative ? AppColors.red : (context.isDark ? AppColors.green : const Color(0xFF059669))).withValues(alpha: 0.15),
               border: Border.all(
-                color: (isNegative ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.3),
+                color: (isNegative ? AppColors.red : (context.isDark ? AppColors.green : const Color(0xFF059669))).withValues(alpha: 0.3),
               ),
             ),
             child: Icon(
               isNegative ? Icons.arrow_outward_rounded : Icons.arrow_downward_rounded,
               size: 18,
-              color: isNegative ? AppColors.red : (context.isDark ? AppColors.primaryLight : const Color(0xFF059669)),
+              color: isNegative ? AppColors.red : (context.isDark ? AppColors.green : const Color(0xFF059669)),
             ),
           ),
           const SizedBox(width: 14),

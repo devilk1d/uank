@@ -102,15 +102,15 @@ class _ActivityItem extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: (isExpense ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.15),
+              color: (isExpense ? AppColors.red : (context.isDark ? AppColors.green : const Color(0xFF059669))).withValues(alpha: 0.15),
               border: Border.all(
-                color: (isExpense ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.3),
+                color: (isExpense ? AppColors.red : (context.isDark ? AppColors.green : const Color(0xFF059669))).withValues(alpha: 0.3),
               ),
             ),
             child: Icon(
               isExpense ? Icons.arrow_outward_rounded : Icons.arrow_downward_rounded,
               size: 18,
-              color: isExpense ? AppColors.red : (context.isDark ? AppColors.primaryLight : const Color(0xFF059669)),
+              color: isExpense ? AppColors.red : (context.isDark ? AppColors.green : const Color(0xFF059669)),
             ),
           ),
           const SizedBox(width: 14),

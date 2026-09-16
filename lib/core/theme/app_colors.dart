@@ -99,7 +99,7 @@ class AppColors {
       isDark(context) ? darkBackground : lightBackground;
 
   static Color incomeColor(BuildContext context) =>
-      isDark(context) ? primary : lightIncomeGreen;
+      isDark(context) ? green : lightIncomeGreen;
 
   static Color expenseColor(BuildContext context) =>
       isDark(context) ? red : lightExpenseRed;

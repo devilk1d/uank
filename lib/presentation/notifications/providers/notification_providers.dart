@@ -58,7 +58,7 @@ final notificationsProvider = Provider<List<AppNotificationItem>>((ref) {
     final payment = paymentMap[bill.id];
     final isPaid = payment?.status == 'paid';
     final amountStr = bill.currency == 'MYR'
-        ? 'RM ${bill.amount % 1 == 0 ? bill.amount.toStringAsFixed(0) : bill.amount.toStringAsFixed(2)}'
+        ? 'RM ${_formatNum(bill.amount)}'
         : 'Rp ${_formatNum(bill.amount)}';
 
     if (isPaid) {

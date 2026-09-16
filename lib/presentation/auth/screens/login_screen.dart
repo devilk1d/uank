@@ -29,6 +29,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  late final AnimationController _formSlideController;
+  late final Animation<Offset> _formSlideAnimation;
+
   _AuthView _currentView = _AuthView.landing;
   bool _isLoading = false;
   String? _errorMessage;
@@ -36,7 +39,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
   bool _obscureConfirmPassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    _formSlideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+      reverseDuration: const Duration(milliseconds: 300),
+    );
+    _formSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 1.05),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _formSlideController,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      ),
+    );
+  }
+
+  @override
   void dispose() {
+    _formSlideController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -46,10 +70,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
 
   void _switchView(_AuthView view) {
     HapticFeedback.selectionClick();
-    setState(() {
-      _currentView = view;
-      _errorMessage = null;
-    });
+    if (view == _AuthView.landing) {
+      FocusScope.of(context).unfocus();
+      _formSlideController.reverse().then((_) {
+        if (mounted) {
+          setState(() {
+            _currentView = _AuthView.landing;
+            _errorMessage = null;
+          });
+        }
+      });
+    } else {
+      setState(() {
+        _currentView = view;
+        _errorMessage = null;
+      });
+      _formSlideController.forward();
+    }
   }
 
   Future<void> _submit() async {
@@ -88,7 +125,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
   Widget build(BuildContext context) {
     final isDark = context.isDark;
     final primaryAccent = isDark ? AppColors.primary : const Color(0xFF15803D);
-    final isExpanded = _currentView != _AuthView.landing;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
@@ -119,8 +155,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                   colors: [
                     Colors.black.withValues(alpha: 0.35),
                     Colors.black.withValues(alpha: 0.2),
-                    Colors.black.withValues(alpha: isExpanded ? 0.75 : 0.65),
-                    Colors.black.withValues(alpha: isExpanded ? 0.95 : 0.9),
+                    Colors.black.withValues(alpha: 0.65),
+                    Colors.black.withValues(alpha: 0.9),
                   ],
                   stops: const [0.0, 0.35, 0.65, 1.0],
                 ),
@@ -128,25 +164,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
             ),
           ),
 
-          // 3. ANIMATED BLUR & DIM OVERLAY (Active when Login / Signup is expanded)
+          // 3. ANIMATED BLUR & DIM OVERLAY (Synchronized with slide-in form)
           Positioned.fill(
-            child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0, end: isExpanded ? 7.0 : 0.0),
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.fastOutSlowIn,
-              builder: (context, blurSigma, child) {
-                if (blurSigma <= 0.05) return const SizedBox.shrink();
+            child: AnimatedBuilder(
+              animation: _formSlideController,
+              builder: (context, child) {
+                final progress = _formSlideController.value;
+                if (progress <= 0.01) return const SizedBox.shrink();
+
                 return GestureDetector(
-                  onTap: () {
-                    FocusScope.of(context).unfocus();
-                    _switchView(_AuthView.landing);
-                  },
+                  onTap: () => _switchView(_AuthView.landing),
                   behavior: HitTestBehavior.opaque,
                   child: ClipRect(
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+                      filter: ImageFilter.blur(
+                        sigmaX: 7.0 * progress,
+                        sigmaY: 7.0 * progress,
+                      ),
                       child: ColoredBox(
-                        color: Colors.black.withValues(alpha: (blurSigma / 7.0) * 0.25),
+                        color: Colors.black.withValues(alpha: 0.35 * progress),
                       ),
                     ),
                   ),
@@ -155,16 +191,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
             ),
           ),
 
-          // 4. ANIMATED BOTTOM SHEET MODAL
+          // 4. LANDING BOTTOM SHEET MODAL (Stays fixed in place at the bottom)
           Align(
             alignment: Alignment.bottomCenter,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.fastOutSlowIn,
+            child: Container(
               width: double.infinity,
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * (isExpanded ? 0.82 : 0.44) + bottomInset,
-              ),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF141418) : Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
@@ -184,13 +215,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
               ),
               child: SafeArea(
                 top: false,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 260),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  child: isExpanded
-                      ? _buildFormView(context, isDark, primaryAccent, bottomInset, bottomPadding)
-                      : _buildLandingView(context, isDark, primaryAccent),
+                child: _buildLandingView(context, isDark, primaryAccent),
+              ),
+            ),
+          ),
+
+          // 5. EXPANDED LOGIN / SIGNUP FORM MODAL (Slides in from the bottom)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SlideTransition(
+              position: _formSlideAnimation,
+              child: Container(
+                width: double.infinity,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.84 + bottomInset,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF141418) : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                  border: Border(
+                    top: BorderSide(
+                      color: isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFE2E8F0),
+                      width: 1.2,
+                    ),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.2),
+                      blurRadius: 32,
+                      offset: const Offset(0, -8),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: _buildFormView(context, isDark, primaryAccent, bottomInset, bottomPadding),
                 ),
               ),
             ),

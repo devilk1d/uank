@@ -682,7 +682,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final isMyr = account?.currency == 'MYR';
     final date = transaction.transactionDate;
     final formattedAmount = isMyr
-        ? 'RM ${transaction.amount % 1 == 0 ? transaction.amount.toStringAsFixed(0) : transaction.amount.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(transaction.amount)}'
         : 'Rp ${_formatNumber(transaction.amount)}';
 
     showModalBottomSheet(
@@ -730,15 +730,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: (isExpense ? AppColors.red : (ctx.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.15),
+                      color: (isExpense ? AppColors.red : (ctx.isDark ? AppColors.green : const Color(0xFF059669))).withValues(alpha: 0.15),
                       border: Border.all(
-                        color: (isExpense ? AppColors.red : (ctx.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.3),
+                        color: (isExpense ? AppColors.red : (ctx.isDark ? AppColors.green : const Color(0xFF059669))).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Icon(
                       isExpense ? Icons.arrow_outward_rounded : Icons.arrow_downward_rounded,
                       size: 20,
-                      color: isExpense ? AppColors.red : (ctx.isDark ? AppColors.primaryLight : const Color(0xFF059669)),
+                      color: isExpense ? AppColors.red : (ctx.isDark ? AppColors.green : const Color(0xFF059669)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -787,11 +787,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
             // Option 1: Edit Transaction
             _AddActionOptionTile(
-              icon: Icons.edit_rounded,
-              iconBgColor: AppColors.primary,
-              iconColor: Colors.black,
+              icon: Icons.edit_outlined,
+              iconBgColor: (ctx.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.15),
+              iconColor: ctx.isDark ? AppColors.primary : const Color(0xFF15803D),
               title: 'Edit Transaction',
-              subtitle: 'Change amount, category, account, or notes',
+              subtitle: 'Update amount, category, date, or notes',
               onTap: () {
                 Navigator.pop(ctx);
                 AddTransactionSheet.show(context, transactionToEdit: transaction);
@@ -829,7 +829,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final toName = toAccount?.name ?? 'Account';
     final fromCurrency = fromAccount?.currency ?? 'IDR';
     final fromAmountStr = fromCurrency == 'MYR'
-        ? 'RM ${transfer.amountFrom % 1 == 0 ? transfer.amountFrom.toStringAsFixed(0) : transfer.amountFrom.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(transfer.amountFrom)}'
         : 'Rp ${_formatNumber(transfer.amountFrom)}';
 
     showModalBottomSheet(
@@ -951,7 +951,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   Future<void> _confirmDeleteTransaction(BuildContext context, WidgetRef ref, Transaction transaction, Account? account) async {
     final isMyr = account?.currency == 'MYR';
     final formattedAmount = isMyr
-        ? 'RM ${transaction.amount % 1 == 0 ? transaction.amount.toStringAsFixed(0) : transaction.amount.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(transaction.amount)}'
         : 'Rp ${_formatNumber(transaction.amount)}';
 
     final confirm = await AppConfirmationSheet.show(
@@ -978,7 +978,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final toName = toAcc?.name ?? 'Account';
     final fromCurrency = fromAcc?.currency ?? 'IDR';
     final formattedAmount = fromCurrency == 'MYR'
-        ? 'RM ${transfer.amountFrom % 1 == 0 ? transfer.amountFrom.toStringAsFixed(0) : transfer.amountFrom.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(transfer.amountFrom)}'
         : 'Rp ${_formatNumber(transfer.amountFrom)}';
 
     final confirm = await AppConfirmationSheet.show(
@@ -995,13 +995,23 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   static String _formatNumber(num val) {
-    final s = val.toStringAsFixed(0);
+    if (val % 1 == 0) {
+      final s = val.abs().toStringAsFixed(0);
+      final buffer = StringBuffer();
+      for (int i = 0; i < s.length; i++) {
+        if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
+        buffer.write(s[i]);
+      }
+      return buffer.toString();
+    }
+    final parts = val.abs().toStringAsFixed(2).split('.');
+    final s = parts[0];
     final buffer = StringBuffer();
     for (int i = 0; i < s.length; i++) {
       if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
       buffer.write(s[i]);
     }
-    return buffer.toString();
+    return '${buffer.toString()},${parts[1]}';
   }
 }
 
@@ -1093,7 +1103,7 @@ class _TransactionCard extends StatelessWidget {
     final isMyr = account?.currency == 'MYR';
     final date = transaction.transactionDate;
     final formattedAmount = isMyr
-        ? 'RM ${transaction.amount % 1 == 0 ? transaction.amount.toStringAsFixed(0) : transaction.amount.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(transaction.amount)}'
         : 'Rp ${_formatNumber(transaction.amount)}';
 
     return GestureDetector(
@@ -1112,15 +1122,15 @@ class _TransactionCard extends StatelessWidget {
                     height: 42,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: (isExpense ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.15),
+                      color: (isExpense ? AppColors.red : (context.isDark ? AppColors.green : const Color(0xFF059669))).withValues(alpha: 0.15),
                       border: Border.all(
-                        color: (isExpense ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.3),
+                        color: (isExpense ? AppColors.red : (context.isDark ? AppColors.green : const Color(0xFF059669))).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Icon(
                       isExpense ? Icons.arrow_outward_rounded : Icons.arrow_downward_rounded,
                       size: 18,
-                      color: isExpense ? AppColors.red : (context.isDark ? AppColors.primaryLight : const Color(0xFF059669)),
+                      color: isExpense ? AppColors.red : (context.isDark ? AppColors.green : const Color(0xFF059669)),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -1172,15 +1182,7 @@ class _TransactionCard extends StatelessWidget {
     );
   }
 
-  static String _formatNumber(num val) {
-    final s = val.toStringAsFixed(0);
-    final buffer = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
-      buffer.write(s[i]);
-    }
-    return buffer.toString();
-  }
+  static String _formatNumber(num val) => _TransactionsScreenState._formatNumber(val);
 }
 
 class _TransferCard extends StatelessWidget {
@@ -1206,11 +1208,11 @@ class _TransferCard extends StatelessWidget {
     final isSameCurrency = fromCurrency == toCurrency;
 
     final fromAmountStr = fromCurrency == 'MYR'
-        ? 'RM ${transfer.amountFrom % 1 == 0 ? transfer.amountFrom.toStringAsFixed(0) : transfer.amountFrom.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(transfer.amountFrom)}'
         : 'Rp ${_formatNumber(transfer.amountFrom)}';
 
     final toAmountStr = toCurrency == 'MYR'
-        ? 'RM ${transfer.amountTo % 1 == 0 ? transfer.amountTo.toStringAsFixed(0) : transfer.amountTo.toStringAsFixed(2)}'
+        ? 'RM ${_formatNumber(transfer.amountTo)}'
         : 'Rp ${_formatNumber(transfer.amountTo)}';
 
     return GestureDetector(
@@ -1301,15 +1303,7 @@ class _TransferCard extends StatelessWidget {
     );
   }
 
-  static String _formatNumber(num val) {
-    final s = val.toStringAsFixed(0);
-    final buffer = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
-      buffer.write(s[i]);
-    }
-    return buffer.toString();
-  }
+  static String _formatNumber(num val) => _TransactionsScreenState._formatNumber(val);
 }
 
 class _DateSectionHeader extends StatelessWidget {

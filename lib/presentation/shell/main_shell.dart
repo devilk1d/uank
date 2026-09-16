@@ -52,8 +52,8 @@ class MainShell extends ConsumerWidget {
         ? Colors.white.withValues(alpha: 0.12)
         : const Color(0xFFE2E8F0);
     final fadeColor = isDark
-        ? const Color(0xFF0E0E10)
-        : Colors.white;
+        ? AppColors.darkBackground
+        : AppColors.lightBackground;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,

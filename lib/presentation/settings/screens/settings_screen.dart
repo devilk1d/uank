@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_background.dart';
@@ -73,7 +74,7 @@ class SettingsScreen extends ConsumerWidget {
                                   displayName,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 16.5,
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: -0.2,
@@ -84,7 +85,9 @@ class SettingsScreen extends ConsumerWidget {
                               const SizedBox(width: 6),
                               GestureDetector(
                                 onTap: () => _showEditProfileSheet(context, ref, displayName),
-                                child: Container(
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 250),
+                                  curve: Curves.easeInOut,
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
                                     color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
@@ -113,7 +116,7 @@ class SettingsScreen extends ConsumerWidget {
                                   email,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w500,
                                     color: context.textSecondary,
@@ -137,7 +140,7 @@ class SettingsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: _SettingsItemTile(
                   icon: Icons.category_rounded,
-                  iconColor: AppColors.teal,
+                  iconColor: isDark ? Colors.white : const Color(0xFF0F172A),
                   title: 'Manage Categories',
                   subtitle: 'Custom income & expense categories',
                   trailing: Icon(Icons.chevron_right_rounded, color: context.textSecondary),
@@ -158,7 +161,7 @@ class SettingsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: _SettingsItemTile(
                   icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                  iconColor: AppColors.yellow,
+                  iconColor: isDark ? Colors.white : const Color(0xFF0F172A),
                   title: 'Dark Mode',
                   subtitle: isDark ? 'Deep Obsidian & Neon Lime' : 'Clean Light Surface',
                   onTap: () {
@@ -185,7 +188,7 @@ class SettingsScreen extends ConsumerWidget {
                   children: [
                     _SettingsItemTile(
                       icon: Icons.lock_reset_rounded,
-                      iconColor: AppColors.orange,
+                      iconColor: isDark ? Colors.white : const Color(0xFF0F172A),
                       title: 'Change Password',
                       subtitle: 'Update account login credentials',
                       trailing: Icon(Icons.chevron_right_rounded, color: context.textSecondary),
@@ -243,10 +246,10 @@ class SettingsScreen extends ConsumerWidget {
                           color: AppColors.primary.withValues(alpha: 0.12),
                           border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'U',
-                            style: TextStyle(
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
                               color: AppColors.primary,
@@ -258,7 +261,7 @@ class SettingsScreen extends ConsumerWidget {
                     const SizedBox(height: 10),
                     Text(
                       'UANK - Personal Finance',
-                      style: TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.8,
@@ -268,7 +271,7 @@ class SettingsScreen extends ConsumerWidget {
                     const SizedBox(height: 3),
                     Text(
                       'v1.0.0',
-                      style: TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         color: context.textMuted,
                       ),
@@ -288,7 +291,7 @@ class SettingsScreen extends ConsumerWidget {
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         title,
-        style: TextStyle(
+        style: GoogleFonts.plusJakartaSans(
           fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 1.1,
@@ -304,7 +307,9 @@ class SettingsScreen extends ConsumerWidget {
         if (Navigator.canPop(context)) ...[
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
               width: 40,
               height: 40,
               decoration: BoxDecoration(
@@ -323,7 +328,7 @@ class SettingsScreen extends ConsumerWidget {
         ],
         Text(
           'Settings & Profile',
-          style: TextStyle(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 22,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
@@ -395,7 +400,7 @@ class SettingsScreen extends ConsumerWidget {
                       const SizedBox(width: 12),
                       Text(
                         'Change Profile Picture',
-                        style: TextStyle(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.3,
@@ -451,7 +456,7 @@ class SettingsScreen extends ConsumerWidget {
                                 const SizedBox(height: 8),
                                 Text(
                                   'Choose Gallery',
-                                  style: TextStyle(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                     color: isDark ? AppColors.primaryLight : const Color(0xFF15803D),
@@ -505,7 +510,7 @@ class SettingsScreen extends ConsumerWidget {
                                 const SizedBox(height: 8),
                                 Text(
                                   'Take Photo',
-                                  style: TextStyle(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                     color: textPrimary,
@@ -528,9 +533,9 @@ class SettingsScreen extends ConsumerWidget {
                       width: double.infinity,
                       child: TextButton.icon(
                         icon: const Icon(Icons.delete_outline_rounded, color: AppColors.red, size: 18),
-                        label: const Text(
+                        label: Text(
                           'Remove Photo (Reset to Default)',
-                          style: TextStyle(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: AppColors.red,
@@ -612,7 +617,7 @@ class SettingsScreen extends ConsumerWidget {
                       const SizedBox(width: 12),
                       Text(
                         'Edit Profile Name',
-                        style: TextStyle(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.3,
@@ -625,10 +630,10 @@ class SettingsScreen extends ConsumerWidget {
                   TextField(
                     controller: nameController,
                     autofocus: true,
-                    style: TextStyle(color: textPrimary, fontSize: 15),
+                    style: GoogleFonts.plusJakartaSans(color: textPrimary, fontSize: 15),
                     decoration: InputDecoration(
                       labelText: 'Full Name',
-                      labelStyle: TextStyle(color: textSecondary),
+                      labelStyle: GoogleFonts.plusJakartaSans(color: textSecondary, fontSize: 13),
                       filled: true,
                       fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9),
                       prefixIcon: Icon(Icons.badge_outlined, color: textSecondary, size: 20),
@@ -675,9 +680,9 @@ class SettingsScreen extends ConsumerWidget {
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                             )
-                          : const Text(
+                          : Text(
                               'Save Changes',
-                              style: TextStyle(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.2,
@@ -755,7 +760,7 @@ class SettingsScreen extends ConsumerWidget {
                       const SizedBox(width: 12),
                       Text(
                         'Change Password',
-                        style: TextStyle(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.3,
@@ -768,10 +773,10 @@ class SettingsScreen extends ConsumerWidget {
                   TextField(
                     controller: passwordController,
                     obscureText: obscure,
-                    style: TextStyle(color: textPrimary, fontSize: 15),
+                    style: GoogleFonts.plusJakartaSans(color: textPrimary, fontSize: 15),
                     decoration: InputDecoration(
                       labelText: 'New Password',
-                      labelStyle: TextStyle(color: textSecondary),
+                      labelStyle: GoogleFonts.plusJakartaSans(color: textSecondary, fontSize: 13),
                       filled: true,
                       fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9),
                       prefixIcon: Icon(Icons.lock_outline_rounded, color: textSecondary, size: 20),
@@ -797,10 +802,10 @@ class SettingsScreen extends ConsumerWidget {
                   TextField(
                     controller: confirmPasswordController,
                     obscureText: obscure,
-                    style: TextStyle(color: textPrimary, fontSize: 15),
+                    style: GoogleFonts.plusJakartaSans(color: textPrimary, fontSize: 15),
                     decoration: InputDecoration(
                       labelText: 'Confirm New Password',
-                      labelStyle: TextStyle(color: textSecondary),
+                      labelStyle: GoogleFonts.plusJakartaSans(color: textSecondary, fontSize: 13),
                       filled: true,
                       fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9),
                       prefixIcon: Icon(Icons.lock_outline_rounded, color: textSecondary, size: 20),
@@ -850,9 +855,9 @@ class SettingsScreen extends ConsumerWidget {
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                             )
-                          : const Text(
+                          : Text(
                               'Update Password',
-                              style: TextStyle(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.2,
@@ -900,19 +905,44 @@ class _SettingsItemTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         child: Row(
           children: [
-            // Squircle Icon Badge
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: iconColor.withValues(alpha: 0.28),
-                  width: 1,
-                ),
-              ),
-              child: Icon(icon, size: 19, color: iconColor),
+            // Squircle Icon Badge with synchronized color & glyph animation
+            TweenAnimationBuilder<Color?>(
+              tween: ColorTween(end: iconColor),
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              builder: (context, animatedColor, _) {
+                final currentColor = animatedColor ?? iconColor;
+                return Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: currentColor.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: currentColor.withValues(alpha: 0.28),
+                      width: 1,
+                    ),
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    switchInCurve: Curves.easeInOut,
+                    switchOutCurve: Curves.easeInOut,
+                    transitionBuilder: (child, anim) => FadeTransition(
+                      opacity: anim,
+                      child: ScaleTransition(
+                        scale: Tween<double>(begin: 0.75, end: 1.0).animate(anim),
+                        child: child,
+                      ),
+                    ),
+                    child: Icon(
+                      icon,
+                      key: ValueKey(icon),
+                      size: 19,
+                      color: currentColor,
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(width: 14),
 
@@ -921,22 +951,26 @@ class _SettingsItemTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w700,
                       color: titleColor ?? context.textPrimary,
                     ),
+                    child: Text(title),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w500,
                       color: context.textSecondary,
                     ),
+                    child: Text(subtitle),
                   ),
                 ],
               ),
@@ -969,8 +1003,8 @@ class _SmoothThemeSwitch extends StatelessWidget {
       child: GestureDetector(
         onTap: () => onChanged(!isDark),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.fastOutSlowIn,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
           width: 50,
           height: 28,
           padding: const EdgeInsets.all(3),
@@ -988,8 +1022,8 @@ class _SmoothThemeSwitch extends StatelessWidget {
                 : null,
           ),
           child: AnimatedAlign(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.fastOutSlowIn,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
             alignment: isDark ? Alignment.centerRight : Alignment.centerLeft,
             child: Container(
               width: 22,
@@ -1006,10 +1040,23 @@ class _SmoothThemeSwitch extends StatelessWidget {
                 ],
               ),
               child: Center(
-                child: Icon(
-                  isDark ? Icons.nightlight_round : Icons.wb_sunny_rounded,
-                  size: 12,
-                  color: isDark ? AppColors.primary : const Color(0xFFF59E0B),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  switchInCurve: Curves.easeInOut,
+                  switchOutCurve: Curves.easeInOut,
+                  transitionBuilder: (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.7, end: 1.0).animate(anim),
+                      child: child,
+                    ),
+                  ),
+                  child: Icon(
+                    isDark ? Icons.nightlight_round : Icons.wb_sunny_rounded,
+                    key: ValueKey(isDark),
+                    size: 12,
+                    color: isDark ? AppColors.primary : const Color(0xFFF59E0B),
+                  ),
                 ),
               ),
             ),
