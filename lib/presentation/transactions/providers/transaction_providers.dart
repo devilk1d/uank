@@ -29,16 +29,17 @@ Future<void> createTransaction(WidgetRef ref, Transaction transaction) async {
   ref.invalidate(accountBalancesProvider);
 }
 
-Future<void> updateTransaction(WidgetRef ref, Transaction transaction) async {
+Future<void> updateTransaction(WidgetRef ref, Transaction transaction, {String? oldAttachmentUrl}) async {
   final repo = ref.read(transactionRepositoryProvider);
-  await repo.update(transaction);
+  await repo.update(transaction, oldAttachmentUrl: oldAttachmentUrl);
   ref.invalidate(transactionsProvider);
   ref.invalidate(accountBalancesProvider);
 }
 
-Future<void> deleteTransaction(WidgetRef ref, String transactionId) async {
+Future<void> deleteTransaction(WidgetRef ref, String transactionId, {String? attachmentUrl}) async {
   final repo = ref.read(transactionRepositoryProvider);
-  await repo.delete(transactionId);
+  await repo.delete(transactionId, attachmentUrl: attachmentUrl);
   ref.invalidate(transactionsProvider);
   ref.invalidate(accountBalancesProvider);
 }
+

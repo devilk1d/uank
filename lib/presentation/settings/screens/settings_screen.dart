@@ -13,11 +13,13 @@ import '../../../core/theme/glass_card.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_confirmation_sheet.dart';
 import '../../../core/widgets/legal_document_sheet.dart';
+import '../../../core/widgets/smooth_app_switch.dart';
 import '../../../core/utils/password_validator.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../categories/screens/categories_screen.dart';
 import '../../repository_providers.dart';
 import '../../theme/theme_mode_provider.dart';
+import '../providers/receipt_ocr_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -34,6 +36,7 @@ class SettingsScreen extends ConsumerWidget {
     final themeMode = ref.watch(appThemeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
     final userProfile = ref.watch(userProfileProvider);
+    final isOcrEnabled = ref.watch(receiptOcrSettingProvider);
 
     final displayName = userProfile?.displayName ?? 'User Account';
     final email = userProfile?.email ?? 'user@uank.app';
@@ -158,27 +161,59 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
 
-              // 3. PREFERENCES & SYSTEM (Theme)
+              // 3. PREFERENCES & SYSTEM (Theme & Scanner)
               _buildSectionTitle(context, 'PREFERENCES & APPEARANCE'),
               const SizedBox(height: 8),
               GlassCard(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                child: _SettingsItemTile(
-                  icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                  iconColor: isDark ? Colors.white : const Color(0xFF0F172A),
-                  title: 'Dark Mode',
-                  subtitle: isDark ? 'Deep Obsidian & Neon Lime' : 'Clean Light Surface',
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    ref.read(appThemeModeProvider.notifier).toggle();
-                  },
-                  trailing: _SmoothThemeSwitch(
-                    isDark: isDark,
-                    onChanged: (_) {
-                      HapticFeedback.selectionClick();
-                      ref.read(appThemeModeProvider.notifier).toggle();
-                    },
-                  ),
+                child: Column(
+                  children: [
+                    _SettingsItemTile(
+                      icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                      iconColor: isDark ? Colors.white : const Color(0xFF0F172A),
+                      title: 'Dark Mode',
+                      subtitle: isDark ? 'Deep Obsidian & Neon Lime' : 'Clean Light Surface',
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        ref.read(appThemeModeProvider.notifier).toggle();
+                      },
+                      trailing: _SmoothThemeSwitch(
+                        isDark: isDark,
+                        onChanged: (_) {
+                          HapticFeedback.selectionClick();
+                          ref.read(appThemeModeProvider.notifier).toggle();
+                        },
+                      ),
+                    ),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      height: 1,
+                      color: context.cardBorder,
+                    ),
+                    _SettingsItemTile(
+                      icon: Icons.document_scanner_rounded,
+                      iconColor: isOcrEnabled
+                          ? (isDark ? AppColors.primary : const Color(0xFF15803D))
+                          : (isDark ? Colors.white54 : const Color(0xFF64748B)),
+                      title: 'Receipt & Proof Scanner',
+                      subtitle: isOcrEnabled
+                          ? 'Auto-scan nominal & date from photos'
+                          : 'Manual amount input',
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        ref.read(receiptOcrSettingProvider.notifier).toggle();
+                      },
+                      trailing: SmoothAppSwitch(
+                        value: isOcrEnabled,
+                        activeIcon: Icons.document_scanner_rounded,
+                        inactiveIcon: Icons.crop_free_rounded,
+                        onChanged: (val) {
+                          ref.read(receiptOcrSettingProvider.notifier).setEnabled(val);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),

@@ -22,9 +22,17 @@ Future<void> createTransfer(WidgetRef ref, Transfer transfer) async {
   ref.invalidate(accountBalancesProvider);
 }
 
-Future<void> deleteTransfer(WidgetRef ref, String id) async {
+Future<void> updateTransfer(WidgetRef ref, Transfer transfer, {String? oldAttachmentUrl}) async {
   final repo = ref.read(transferRepositoryProvider);
-  await repo.delete(id);
+  await repo.update(transfer, oldAttachmentUrl: oldAttachmentUrl);
   ref.invalidate(transfersProvider);
   ref.invalidate(accountBalancesProvider);
 }
+
+Future<void> deleteTransfer(WidgetRef ref, String id, {String? attachmentUrl}) async {
+  final repo = ref.read(transferRepositoryProvider);
+  await repo.delete(id, attachmentUrl: attachmentUrl);
+  ref.invalidate(transfersProvider);
+  ref.invalidate(accountBalancesProvider);
+}
+

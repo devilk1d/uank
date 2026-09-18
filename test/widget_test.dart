@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:uank/core/theme/app_colors.dart';
 import 'package:uank/core/utils/currency_formatter.dart';
 import 'package:uank/core/widgets/app_dropdown.dart';
+import 'package:uank/core/widgets/receipt_ocr_animation_widget.dart';
 
 void main() {
   testWidgets('AppDropdownFormField updates displayed label when value changes dynamically', (tester) async {
@@ -106,6 +107,21 @@ void main() {
     expect(CurrencyInputFormatter.format(350000), '350.000');
     expect(CurrencyInputFormatter.parse('1.000.000'), 1000000);
     expect(CurrencyInputFormatter.parse('250,000'), 250000);
+  });
+
+  testWidgets('ReceiptOcrAnimationWidget renders animation elements smoothly', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ReceiptOcrAnimationWidget(height: 200),
+        ),
+      ),
+    );
+
+    expect(find.text('FamilyMart KLCC'), findsOneWidget);
+    expect(find.text('RM 25.40'), findsOneWidget);
+    expect(find.text('TOTAL'), findsOneWidget);
+    expect(find.byType(ReceiptOcrAnimationWidget), findsOneWidget);
   });
 }
 

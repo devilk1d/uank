@@ -81,8 +81,29 @@ class CurrencyInputFormatter extends TextInputFormatter {
     );
   }
 
-  /// Formats a raw number or string into a thousands-separated string (e.g., 20000 -> "20.000").
-  static String format(num value, {String separator = '.'}) {
+  /// Formats a raw number into a formatted string (e.g. 20000 -> "20.000", 6.39 -> "6.39").
+  static String format(num value, {String? currency, String separator = '.'}) {
+    if (currency == 'MYR' || value % 1 != 0) {
+      if (value % 1 == 0) {
+        final s = value.toStringAsFixed(0);
+        final buffer = StringBuffer();
+        for (int i = 0; i < s.length; i++) {
+          if (i > 0 && (s.length - i) % 3 == 0) buffer.write(',');
+          buffer.write(s[i]);
+        }
+        return buffer.toString();
+      }
+      final parts = value.toStringAsFixed(2).split('.');
+      final s = parts[0];
+      final buffer = StringBuffer();
+      for (int i = 0; i < s.length; i++) {
+        if (i > 0 && (s.length - i) % 3 == 0) buffer.write(',');
+        buffer.write(s[i]);
+      }
+      // Trim trailing zero if .x0 or keep 2 decimals
+      return '${buffer.toString()}.${parts[1]}';
+    }
+
     final s = value.toStringAsFixed(0);
     final buffer = StringBuffer();
     for (int i = 0; i < s.length; i++) {
@@ -94,9 +115,49 @@ class CurrencyInputFormatter extends TextInputFormatter {
     return buffer.toString();
   }
 
-  /// Parses a formatted string back into a numeric value (e.g., "20.000" -> 20000).
-  static num parse(String text) {
-    final clean = text.replaceAll(RegExp(r'[^\d]'), '');
+  /// Parses a formatted string back into a numeric value (e.g., "20.000" -> 20000, "6.39" -> 6.39).
+  static num parse(String text, {String? currency}) {
+    if (text.trim().isEmpty) return 0;
+
+    final trimmed = text.trim();
+
+    // 1. Explicit IDR handling: dot is thousands, comma is decimal
+    if (currency == 'IDR') {
+      if (RegExp(r',\d{1,2}$').hasMatch(trimmed)) {
+        final clean = trimmed.replaceAll('.', '').replaceAll(',', '.');
+        return num.tryParse(clean) ?? 0;
+      }
+      final clean = trimmed.replaceAll('.', '').replaceAll(',', '');
+      return num.tryParse(clean) ?? 0;
+    }
+
+    // 2. Explicit MYR handling: comma is thousands, dot is decimal
+    if (currency == 'MYR') {
+      final clean = trimmed.replaceAll(',', '');
+      return num.tryParse(clean) ?? 0;
+    }
+
+    // 3. Heuristic when currency is null/unknown:
+    // Indonesian pattern: multiple dots (1.500.000) or comma decimal with dots (150.000,50)
+    if (RegExp(r'\.\d{3}\.').hasMatch(trimmed) || RegExp(r'\.\d{3},\d{1,2}$').hasMatch(trimmed)) {
+      final clean = trimmed.replaceAll('.', '').replaceAll(',', '.');
+      return num.tryParse(clean) ?? 0;
+    }
+
+    // Standard English decimal: e.g. 6.39, 1,250.50, 10.5
+    if (RegExp(r'^\d{1,3}(,\d{3})*\.\d{1,2}$|^\d+\.\d{1,2}$').hasMatch(trimmed)) {
+      final clean = trimmed.replaceAll(',', '');
+      return num.tryParse(clean) ?? 0;
+    }
+
+    // Indonesian 3-digit thousand dot at end without decimal: 150.000
+    if (RegExp(r'^\d{1,3}\.\d{3}$').hasMatch(trimmed)) {
+      final clean = trimmed.replaceAll('.', '');
+      return num.tryParse(clean) ?? 0;
+    }
+
+    // Fallback
+    final clean = trimmed.replaceAll(',', '');
     return num.tryParse(clean) ?? 0;
   }
 }

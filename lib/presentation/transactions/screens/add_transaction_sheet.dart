@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/receipt_ocr_parser.dart';
 import '../../../core/widgets/app_calendar_sheet.dart';
 import '../../../core/widgets/app_dropdown.dart';
+import '../../../core/widgets/receipt_attachment_picker.dart';
 import '../../../domain/entities/category.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../accounts/providers/account_providers.dart';
 import '../../categories/providers/category_providers.dart';
 import '../../categories/screens/categories_screen.dart';
+import '../../repository_providers.dart';
+import '../../settings/providers/receipt_ocr_provider.dart';
 import '../providers/transaction_providers.dart';
 
 class AddTransactionSheet extends ConsumerStatefulWidget {
@@ -42,6 +47,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   late DateTime _selectedDate;
   bool _isLoading = false;
 
+  // Staged Receipt Image State (In-Memory)
+  Uint8List? _stagedImageBytes;
+  String? _stagedImageExtension;
+  String? _existingAttachmentUrl;
+  bool _isExistingAttachmentRemoved = false;
+  bool _isScanningOcr = false;
+
   bool get isEditing => widget.transactionToEdit != null;
 
   @override
@@ -52,8 +64,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       _selectedType = editTx.type;
       _selectedAccountId = editTx.accountId;
       _selectedDate = editTx.transactionDate;
+      _existingAttachmentUrl = editTx.attachmentUrl;
       _amountController = TextEditingController(
-        text: CurrencyInputFormatter.format(editTx.amount),
+        text: CurrencyInputFormatter.format(editTx.amount, currency: _selectedCurrency),
       );
       _descController = TextEditingController(text: editTx.description ?? '');
     } else {
@@ -71,6 +84,34 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     super.dispose();
   }
 
+  void _handleOcrResult(OcrResult ocr) {
+    setState(() {
+      _isScanningOcr = false;
+
+      if (ocr.currency != null && ocr.currency != _selectedCurrency) {
+        _selectedCurrency = ocr.currency!;
+        final accounts = ref.read(accountsProvider).asData?.value;
+        if (accounts != null) {
+          final matching = accounts.where((a) => a.currency == _selectedCurrency).toList();
+          if (_selectedAccountId == null || !matching.any((a) => a.id == _selectedAccountId)) {
+            _selectedAccountId = matching.firstOrNull?.id;
+          }
+        }
+      }
+
+      if (ocr.amount != null) {
+        _amountController.text = CurrencyInputFormatter.format(
+          ocr.amount!,
+          currency: _selectedCurrency,
+        );
+      }
+
+      if (ocr.date != null) {
+        _selectedDate = ocr.date!;
+      }
+    });
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedAccountId == null) {
@@ -83,7 +124,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       return;
     }
 
-    final amount = CurrencyInputFormatter.parse(_amountController.text);
+    final amount = CurrencyInputFormatter.parse(_amountController.text, currency: _selectedCurrency);
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -97,6 +138,22 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     setState(() => _isLoading = true);
 
     try {
+      String? finalAttachmentUrl = _existingAttachmentUrl;
+      if (_isExistingAttachmentRemoved) {
+        finalAttachmentUrl = null;
+      }
+
+      // If user staged a new image in memory, upload it now upon save
+      if (_stagedImageBytes != null) {
+        final uploadUrl = await ref
+            .read(transactionRepositoryProvider)
+            .uploadReceiptImage(
+              bytes: _stagedImageBytes!,
+              fileExtension: _stagedImageExtension ?? 'jpg',
+            );
+        finalAttachmentUrl = uploadUrl;
+      }
+
       if (isEditing) {
         final updatedTx = widget.transactionToEdit!.copyWith(
           accountId: _selectedAccountId!,
@@ -104,10 +161,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           type: _selectedType,
           amount: amount,
           description: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
+          attachmentUrl: finalAttachmentUrl,
           transactionDate: _selectedDate,
         );
 
-        await updateTransaction(ref, updatedTx);
+        await updateTransaction(
+          ref,
+          updatedTx,
+          oldAttachmentUrl: (_isExistingAttachmentRemoved || _stagedImageBytes != null)
+              ? widget.transactionToEdit!.attachmentUrl
+              : null,
+        );
 
         if (mounted) {
           Navigator.pop(context);
@@ -120,6 +184,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           type: _selectedType,
           amount: amount,
           description: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
+          attachmentUrl: finalAttachmentUrl,
           transactionDate: _selectedDate,
         );
 
@@ -129,8 +194,15 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           Navigator.pop(context);
         }
       }
-    } catch (_) {
-      // Failed silently / handled
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save transaction: $e'),
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -141,6 +213,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final accountsAsync = ref.watch(accountsProvider);
     final allCategoriesAsync = ref.watch(categoriesProvider);
+    final isOcrEnabled = ref.watch(receiptOcrSettingProvider);
 
     // Auto-resolve category on editing if not already set
     if (isEditing && _selectedCategory == null && widget.transactionToEdit?.categoryId != null) {
@@ -202,7 +275,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Toggle Type (Expense vs Income)              // Type Switcher
+              // Toggle Type (Expense vs Income)
               Container(
                 height: 48,
                 padding: const EdgeInsets.all(4),
@@ -257,8 +330,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                           const SizedBox(height: 6),
                           TextFormField(
                             controller: _amountController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [CurrencyInputFormatter()],
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: _selectedCurrency == 'MYR'
+                                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))]
+                                : [CurrencyInputFormatter()],
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -616,6 +691,37 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+
+              // Receipt / Proof Attachment (Only visible if enabled in Settings)
+              if (isOcrEnabled) ...[
+                ReceiptAttachmentPicker(
+                  stagedBytes: _stagedImageBytes,
+                  stagedExtension: _stagedImageExtension,
+                  existingUrl: _existingAttachmentUrl,
+                  isExistingRemoved: _isExistingAttachmentRemoved,
+                  isScanningOcr: _isScanningOcr,
+                  isOcrEnabled: true,
+                  onImageSelected: (bytes, ext, path) {
+                    setState(() {
+                      _stagedImageBytes = bytes;
+                      _stagedImageExtension = ext;
+                      _isExistingAttachmentRemoved = false;
+                      _isScanningOcr = true;
+                    });
+                  },
+                  onImageRemoved: () {
+                    setState(() {
+                      _stagedImageBytes = null;
+                      _stagedImageExtension = null;
+                      _isExistingAttachmentRemoved = true;
+                      _isScanningOcr = false;
+                    });
+                  },
+                  onOcrParsed: (ocr) => _handleOcrResult(ocr),
+                ),
+                const SizedBox(height: 8),
+              ],
               const SizedBox(height: 24),
 
               // Submit Button

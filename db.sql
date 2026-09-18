@@ -47,6 +47,7 @@ create table if not exists transactions (
   amount numeric(15,2) not null check (amount > 0),
   amount_idr numeric(15,2),                    -- setara IDR, diisi otomatis via trigger fill_amount_idr
   description text,
+  attachment_url text,
   transaction_date date not null default current_date,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -63,6 +64,7 @@ create table if not exists transfers (
   exchange_rate numeric(15,6) not null,
   transfer_date date not null default current_date,
   notes text,
+  attachment_url text,
   created_at timestamptz default now(),
   constraint different_accounts check (from_account_id <> to_account_id)
 );
@@ -143,6 +145,8 @@ alter table categories alter column user_id set default auth.uid();
 alter table transactions alter column user_id set default auth.uid();
 alter table transfers alter column user_id set default auth.uid();
 
+alter table transactions add column if not exists attachment_url text;
+alter table transfers add column if not exists attachment_url text;
 alter table bills add column if not exists is_active boolean default true;
 alter table bills alter column user_id set default auth.uid();
 
@@ -612,4 +616,58 @@ end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
 
 revoke all on function bills_due_for_reminder() from public, anon, authenticated;
-grant execute on function bills_due_for_reminder() to service_role;
+grant execute on function bills_due_for_reminder() to service_role;
+
+
+-- =========================================================
+-- 11. SUPABASE STORAGE (Bucket Bukti Transaksi & Struk)
+-- =========================================================
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'receipts',
+  'receipts',
+  true,
+  5242880, -- 5 MB
+  array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/jpg']
+)
+on conflict (id) do update set
+  public = true,
+  file_size_limit = 5242880,
+  allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/jpg'];
+
+-- Policy: User hanya bisa upload ke foldernya sendiri (<user_id>/filename)
+create policy "Users can upload receipts to own folder"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'receipts' and
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Policy: User bisa melihat struk miliknya (atau publik jika bucket public)
+create policy "Users can view own receipts or public receipts"
+on storage.objects for select
+to authenticated
+using (
+  bucket_id = 'receipts' and
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Policy: User bisa mengupdate struk miliknya
+create policy "Users can update own receipts"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'receipts' and
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Policy: User bisa menghapus struk miliknya
+create policy "Users can delete own receipts"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'receipts' and
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+

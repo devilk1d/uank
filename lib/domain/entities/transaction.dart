@@ -13,6 +13,7 @@ abstract class Transaction with _$Transaction {
     required num amount,
     @JsonKey(name: 'amount_idr') num? amountIdr,
     String? description,
+    @JsonKey(name: 'attachment_url') String? attachmentUrl,
     @JsonKey(name: 'transaction_date') required DateTime transactionDate,
     @JsonKey(name: 'created_at') DateTime? createdAt,
   }) = _Transaction;

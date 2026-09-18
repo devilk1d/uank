@@ -12,6 +12,7 @@ import '../../accounts/providers/account_providers.dart';
 import '../../transfers/providers/transfer_providers.dart';
 import '../../transfers/screens/add_transfer_sheet.dart';
 import '../../../core/widgets/app_confirmation_sheet.dart';
+import '../../../core/widgets/receipt_image_viewer.dart';
 import '../providers/transaction_providers.dart';
 import '../widgets/transaction_calendar_sheet.dart';
 import 'add_transaction_sheet.dart';
@@ -785,6 +786,26 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
             const SizedBox(height: 18),
 
+            // Option: View Receipt Image (if attached)
+            if (transaction.attachmentUrl != null && transaction.attachmentUrl!.isNotEmpty) ...[
+              _AddActionOptionTile(
+                icon: Icons.image_search_rounded,
+                iconBgColor: AppColors.teal.withValues(alpha: 0.15),
+                iconColor: AppColors.teal,
+                title: 'View Receipt Image',
+                subtitle: 'Tap to view full receipt or proof image',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ReceiptImageViewer.show(
+                    context,
+                    imageUrl: transaction.attachmentUrl,
+                    title: transaction.description ?? 'Receipt Proof',
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
             // Option 1: Edit Transaction
             _AddActionOptionTile(
               icon: Icons.edit_outlined,
@@ -930,7 +951,41 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
             const SizedBox(height: 18),
 
-            // Option: Delete Transfer Log
+            // Option: View Transfer Proof Image (if attached)
+            if (transfer.attachmentUrl != null && transfer.attachmentUrl!.isNotEmpty) ...[
+              _AddActionOptionTile(
+                icon: Icons.image_search_rounded,
+                iconBgColor: AppColors.teal.withValues(alpha: 0.15),
+                iconColor: AppColors.teal,
+                title: 'View Transfer Proof',
+                subtitle: 'Tap to view full transfer slip image',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ReceiptImageViewer.show(
+                    context,
+                    imageUrl: transfer.attachmentUrl,
+                    title: 'Transfer Proof',
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Option 1: Edit Transfer
+            _AddActionOptionTile(
+              icon: Icons.edit_outlined,
+              iconBgColor: (ctx.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.15),
+              iconColor: ctx.isDark ? AppColors.primary : const Color(0xFF15803D),
+              title: 'Edit Transfer Log',
+              subtitle: 'Update accounts, amount, notes, or proof',
+              onTap: () {
+                Navigator.pop(ctx);
+                AddTransferSheet.show(context, transferToEdit: transfer);
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // Option 2: Delete Transfer Log
             _AddActionOptionTile(
               icon: Icons.delete_outline_rounded,
               iconBgColor: AppColors.red.withValues(alpha: 0.15),
@@ -963,7 +1018,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
 
     if (confirm == true) {
-      await deleteTransaction(ref, transaction.id);
+      await deleteTransaction(ref, transaction.id, attachmentUrl: transaction.attachmentUrl);
     }
   }
 
@@ -990,7 +1045,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
 
     if (confirm == true) {
-      await deleteTransfer(ref, transfer.id);
+      await deleteTransfer(ref, transfer.id, attachmentUrl: transfer.attachmentUrl);
     }
   }
 
@@ -1138,17 +1193,31 @@ class _TransactionCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          transaction.description?.isNotEmpty == true
-                              ? transaction.description!
-                              : (isExpense ? 'Expense' : 'Income'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: context.textPrimary,
-                          ),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                transaction.description?.isNotEmpty == true
+                                    ? transaction.description!
+                                    : (isExpense ? 'Expense' : 'Income'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                            ),
+                            if (transaction.attachmentUrl != null && transaction.attachmentUrl!.isNotEmpty) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.receipt_long_rounded,
+                                size: 13,
+                                color: context.accentLinkColor.withValues(alpha: 0.8),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 3),
                         Text(
@@ -1247,15 +1316,29 @@ class _TransferCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '$fromName \u2192 $toName',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: context.textPrimary,
-                          ),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                '$fromName \u2192 $toName',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                            ),
+                            if (transfer.attachmentUrl != null && transfer.attachmentUrl!.isNotEmpty) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.receipt_long_rounded,
+                                size: 13,
+                                color: context.accentLinkColor.withValues(alpha: 0.8),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 3),
                         Text(

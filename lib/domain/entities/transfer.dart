@@ -14,6 +14,7 @@ abstract class Transfer with _$Transfer {
     @JsonKey(name: 'exchange_rate') required num exchangeRate,
     @JsonKey(name: 'transfer_date') required DateTime transferDate,
     String? notes,
+    @JsonKey(name: 'attachment_url') String? attachmentUrl,
     @JsonKey(name: 'created_at') DateTime? createdAt,
   }) = _Transfer;
 

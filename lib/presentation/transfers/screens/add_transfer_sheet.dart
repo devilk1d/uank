@@ -4,22 +4,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/receipt_ocr_parser.dart';
 import '../../../core/widgets/app_dropdown.dart';
+import '../../../core/widgets/receipt_attachment_picker.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/entities/transfer.dart';
 import '../../accounts/providers/account_providers.dart';
 import '../../repository_providers.dart';
+import '../../settings/providers/receipt_ocr_provider.dart';
 import '../providers/transfer_providers.dart';
 
 class AddTransferSheet extends ConsumerStatefulWidget {
-  const AddTransferSheet({super.key});
+  const AddTransferSheet({super.key, this.transferToEdit});
 
-  static Future<void> show(BuildContext context) {
+  final Transfer? transferToEdit;
+
+  static Future<void> show(BuildContext context, {Transfer? transferToEdit}) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const AddTransferSheet(),
+      builder: (_) => AddTransferSheet(transferToEdit: transferToEdit),
     );
   }
 
@@ -29,9 +34,9 @@ class AddTransferSheet extends ConsumerStatefulWidget {
 
 class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _amountFromController = TextEditingController();
-  final _rateController = TextEditingController(text: '1.0');
-  final _notesController = TextEditingController();
+  late final TextEditingController _amountFromController;
+  late final TextEditingController _rateController;
+  late final TextEditingController _notesController;
 
   String? _fromAccountId;
   String? _toAccountId;
@@ -42,9 +47,33 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
   String? _rateError;
   bool _hasInitializedAccounts = false;
 
+  // Staged Receipt Image State (In-Memory)
+  Uint8List? _stagedImageBytes;
+  String? _stagedImageExtension;
+  String? _existingAttachmentUrl;
+  bool _isExistingAttachmentRemoved = false;
+  bool _isScanningOcr = false;
+
+  bool get isEditing => widget.transferToEdit != null;
+
   @override
   void initState() {
     super.initState();
+    final editTr = widget.transferToEdit;
+    if (editTr != null) {
+      _fromAccountId = editTr.fromAccountId;
+      _toAccountId = editTr.toAccountId;
+      _existingAttachmentUrl = editTr.attachmentUrl;
+      _amountFromController = TextEditingController(
+        text: CurrencyInputFormatter.format(editTr.amountFrom),
+      );
+      _rateController = TextEditingController(text: editTr.exchangeRate.toString());
+      _notesController = TextEditingController(text: editTr.notes ?? '');
+    } else {
+      _amountFromController = TextEditingController();
+      _rateController = TextEditingController(text: '1.0');
+      _notesController = TextEditingController();
+    }
     _amountFromController.addListener(() => setState(() {}));
   }
 
@@ -141,33 +170,37 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
   }
 
   String _formatAmount(num value, String currency) {
-    if (currency == 'IDR') {
-      final s = value.toStringAsFixed(0);
-      final buffer = StringBuffer();
-      for (int i = 0; i < s.length; i++) {
-        if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
-        buffer.write(s[i]);
-      }
-      return buffer.toString();
-    } else {
-      if (value % 1 == 0) {
-        final s = value.toStringAsFixed(0);
-        final buffer = StringBuffer();
-        for (int i = 0; i < s.length; i++) {
-          if (i > 0 && (s.length - i) % 3 == 0) buffer.write(',');
-          buffer.write(s[i]);
+    return CurrencyInputFormatter.format(value, currency: currency);
+  }
+
+  void _handleOcrResult(OcrResult ocr, List<Account> accounts) {
+    setState(() {
+      _isScanningOcr = false;
+
+      if (ocr.currency != null) {
+        final currentFromAcc = _findAccount(accounts, _fromAccountId);
+        if (currentFromAcc == null || currentFromAcc.currency != ocr.currency) {
+          final matchingAcc = accounts.where((a) => a.currency == ocr.currency).firstOrNull;
+          if (matchingAcc != null) {
+            _fromAccountId = matchingAcc.id;
+            if (_fromAccountId == _toAccountId) {
+              _toAccountId = accounts.firstWhere((a) => a.id != matchingAcc.id).id;
+            }
+            _updateExchangeRate(accounts);
+          }
         }
-        return buffer.toString();
       }
-      final parts = value.toStringAsFixed(2).split('.');
-      final s = parts[0];
-      final buffer = StringBuffer();
-      for (int i = 0; i < s.length; i++) {
-        if (i > 0 && (s.length - i) % 3 == 0) buffer.write(',');
-        buffer.write(s[i]);
+
+      final fromAcc = _findAccount(accounts, _fromAccountId);
+      final currency = fromAcc?.currency ?? ocr.currency ?? 'IDR';
+
+      if (ocr.amount != null) {
+        _amountFromController.text = CurrencyInputFormatter.format(
+          ocr.amount!,
+          currency: currency,
+        );
       }
-      return '${buffer.toString()}.${parts[1]}';
-    }
+    });
   }
 
   Future<void> _submit(List<Account> accounts) async {
@@ -187,17 +220,17 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
       return;
     }
 
-    final amountFrom = CurrencyInputFormatter.parse(_amountFromController.text);
+    final fromAcc = _findAccount(accounts, _fromAccountId);
+    final toAcc = _findAccount(accounts, _toAccountId);
+    final isCrossCurrency = fromAcc != null && toAcc != null && fromAcc.currency != toAcc.currency;
+
+    final amountFrom = CurrencyInputFormatter.parse(_amountFromController.text, currency: fromAcc?.currency);
     if (amountFrom <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid transfer amount'), backgroundColor: AppColors.red),
       );
       return;
     }
-
-    final fromAcc = _findAccount(accounts, _fromAccountId);
-    final toAcc = _findAccount(accounts, _toAccountId);
-    final isCrossCurrency = fromAcc != null && toAcc != null && fromAcc.currency != toAcc.currency;
 
     final exchangeRate = isCrossCurrency ? (num.tryParse(_rateController.text) ?? 1.0) : 1.0;
     if (isCrossCurrency && exchangeRate <= 0) {
@@ -212,24 +245,72 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
     setState(() => _isLoading = true);
 
     try {
-      final transfer = Transfer(
-        id: '',
-        fromAccountId: _fromAccountId!,
-        toAccountId: _toAccountId!,
-        amountFrom: amountFrom,
-        amountTo: amountTo,
-        exchangeRate: exchangeRate,
-        transferDate: DateTime.now(),
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-      );
-
-      await createTransfer(ref, transfer);
-
-      if (mounted) {
-        Navigator.pop(context);
+      String? finalAttachmentUrl = _existingAttachmentUrl;
+      if (_isExistingAttachmentRemoved) {
+        finalAttachmentUrl = null;
       }
-    } catch (_) {
-      // Failed silently / handled
+
+      // If user staged a new image in memory, upload it now upon save
+      if (_stagedImageBytes != null) {
+        final uploadUrl = await ref
+            .read(transferRepositoryProvider)
+            .uploadReceiptImage(
+              bytes: _stagedImageBytes!,
+              fileExtension: _stagedImageExtension ?? 'jpg',
+            );
+        finalAttachmentUrl = uploadUrl;
+      }
+
+      if (isEditing) {
+        final updatedTr = widget.transferToEdit!.copyWith(
+          fromAccountId: _fromAccountId!,
+          toAccountId: _toAccountId!,
+          amountFrom: amountFrom,
+          amountTo: amountTo,
+          exchangeRate: exchangeRate,
+          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          attachmentUrl: finalAttachmentUrl,
+        );
+
+        await updateTransfer(
+          ref,
+          updatedTr,
+          oldAttachmentUrl: (_isExistingAttachmentRemoved || _stagedImageBytes != null)
+              ? widget.transferToEdit!.attachmentUrl
+              : null,
+        );
+
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } else {
+        final transfer = Transfer(
+          id: '',
+          fromAccountId: _fromAccountId!,
+          toAccountId: _toAccountId!,
+          amountFrom: amountFrom,
+          amountTo: amountTo,
+          exchangeRate: exchangeRate,
+          transferDate: DateTime.now(),
+          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          attachmentUrl: finalAttachmentUrl,
+        );
+
+        await createTransfer(ref, transfer);
+
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to process transfer: $e'),
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -239,6 +320,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final accountsAsync = ref.watch(accountsProvider);
+    final isOcrEnabled = ref.watch(receiptOcrSettingProvider);
 
     return Container(
       padding: EdgeInsets.fromLTRB(22, 20, 22, 20 + bottomInset),
@@ -307,7 +389,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                   final toAcc = _findAccount(accounts, _toAccountId);
                   final isCrossCurrency = fromAcc != null && toAcc != null && fromAcc.currency != toAcc.currency;
 
-                  final rawAmount = CurrencyInputFormatter.parse(_amountFromController.text);
+                  final rawAmount = CurrencyInputFormatter.parse(_amountFromController.text, currency: fromAcc?.currency);
                   final currentRate = num.tryParse(_rateController.text) ?? 1.0;
                   final estimatedAmountTo = isCrossCurrency ? (rawAmount * currentRate) : rawAmount;
 
@@ -337,7 +419,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                           );
                         }).toList(),
                         onChanged: (val) {
-                          if (val != null) {
+                          if (val != null && val != _fromAccountId) {
                             setState(() {
                               _fromAccountId = val;
                               if (_fromAccountId == _toAccountId) {
@@ -348,7 +430,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                           }
                         },
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
 
                       // Swap Accounts Button
                       Center(
@@ -357,20 +439,20 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                             decoration: BoxDecoration(
-                              color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.12),
+                              color: context.inputBg,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.3)),
+                              border: Border.all(color: context.cardBorder),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.swap_vert_rounded, size: 16, color: context.accentLinkColor),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 6),
                                 Text(
                                   'Swap Accounts',
                                   style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
                                     color: context.accentLinkColor,
                                   ),
                                 ),
@@ -379,7 +461,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
 
                       // Destination Account (Receiver)
                       AppDropdownFormField<String>(
@@ -387,7 +469,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                         value: _toAccountId,
                         labelText: 'Destination Account (Receiver)',
                         sheetTitle: 'Select Destination Account',
-                        items: accounts.where((a) => a.id != _fromAccountId).map((acc) {
+                        items: accounts.map((acc) {
                           return AppDropdownItem<String>(
                             value: acc.id,
                             label: '${acc.name} (${acc.currency})',
@@ -399,25 +481,34 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                                       ? Icons.account_balance_wallet_outlined
                                       : Icons.payments_outlined,
                               size: 20,
-                              color: AppColors.teal,
+                              color: context.accentIconColor,
                             ),
                           );
                         }).toList(),
                         onChanged: (val) {
-                          setState(() => _toAccountId = val);
-                          _updateExchangeRate(accounts);
+                          if (val != null && val != _toAccountId) {
+                            setState(() {
+                              _toAccountId = val;
+                              if (_toAccountId == _fromAccountId) {
+                                _fromAccountId = accounts.firstWhere((a) => a.id != val).id;
+                              }
+                            });
+                            _updateExchangeRate(accounts);
+                          }
                         },
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
-                      // Cross Currency Card (Live Rate from API & Manual Override)
+                      // Exchange Rate Section (Cross-currency only)
                       if (isCrossCurrency) ...[
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: context.isDark ? const Color(0xFF181A20) : context.inputBg,
+                            color: context.inputBg,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: context.cardBorder),
+                            border: Border.all(
+                              color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,10 +518,14 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(Icons.currency_exchange_rounded, size: 18, color: context.accentIconColor),
-                                      const SizedBox(width: 8),
+                                      Icon(
+                                        Icons.currency_exchange_rounded,
+                                        size: 16,
+                                        color: context.accentLinkColor,
+                                      ),
+                                      const SizedBox(width: 6),
                                       Text(
-                                        'Exchange Rate (${fromAcc.currency} \u2192 ${toAcc.currency})',
+                                        'Exchange Rate',
                                         style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700,
@@ -445,7 +540,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                                       height: 14,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                                        color: context.accentLinkColor,
                                       ),
                                     )
                                   else
@@ -454,10 +549,14 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                                       child: Row(
                                         children: [
                                           Icon(Icons.refresh_rounded, size: 14, color: context.accentLinkColor),
-                                          const SizedBox(width: 3),
+                                          const SizedBox(width: 4),
                                           Text(
-                                            'Refresh',
-                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.accentLinkColor),
+                                            'Refresh Rate',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: context.accentLinkColor,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -465,21 +564,14 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                                 ],
                               ),
                               const SizedBox(height: 10),
-
-                              // Rate Input Field
                               TextFormField(
                                 controller: _rateController,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                                ],
-                                onChanged: (val) {
-                                  final parsed = num.tryParse(val);
+                                onChanged: (_) {
                                   setState(() {
-                                    if (_apiRate != null && parsed != null) {
-                                      final formattedInput = _formatRate(parsed);
-                                      final formattedApi = _formatRate(_apiRate!);
-                                      _isCustomRate = formattedInput != formattedApi;
+                                    final currentVal = num.tryParse(_rateController.text);
+                                    if (_apiRate != null && currentVal != null && (currentVal - _apiRate!).abs() < 0.0001) {
+                                      _isCustomRate = false;
                                     } else {
                                       _isCustomRate = true;
                                     }
@@ -554,7 +646,9 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                           TextFormField(
                             controller: _amountFromController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: [CurrencyInputFormatter()],
+                            inputFormatters: fromAcc?.currency == 'MYR'
+                                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))]
+                                : [CurrencyInputFormatter()],
                             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary),
                             decoration: InputDecoration(
                               hintText: '0',
@@ -675,6 +769,41 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+
+              // Receipt / Transfer Proof Attachment (Only visible if enabled in Settings)
+              if (isOcrEnabled) ...[
+                accountsAsync.when(
+                  data: (accounts) => ReceiptAttachmentPicker(
+                    stagedBytes: _stagedImageBytes,
+                    stagedExtension: _stagedImageExtension,
+                    existingUrl: _existingAttachmentUrl,
+                    isExistingRemoved: _isExistingAttachmentRemoved,
+                    isScanningOcr: _isScanningOcr,
+                    isOcrEnabled: true,
+                    onImageSelected: (bytes, ext, path) {
+                      setState(() {
+                        _stagedImageBytes = bytes;
+                        _stagedImageExtension = ext;
+                        _isExistingAttachmentRemoved = false;
+                        _isScanningOcr = true;
+                      });
+                    },
+                    onImageRemoved: () {
+                      setState(() {
+                        _stagedImageBytes = null;
+                        _stagedImageExtension = null;
+                        _isExistingAttachmentRemoved = true;
+                        _isScanningOcr = false;
+                      });
+                    },
+                    onOcrParsed: (ocr) => _handleOcrResult(ocr, accounts),
+                  ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                ),
+                const SizedBox(height: 6),
+              ],
               const SizedBox(height: 22),
 
               // Submit Button
@@ -696,9 +825,9 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                           )
-                        : const Text(
-                            'Send Transfer',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                        : Text(
+                            isEditing ? 'Update Transfer' : 'Send Transfer',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
                           ),
                   ),
                 ),

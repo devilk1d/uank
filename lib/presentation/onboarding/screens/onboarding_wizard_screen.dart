@@ -6,20 +6,43 @@ import '../../../core/theme/app_colors.dart';
 import '../widgets/step_all_set.dart';
 import '../widgets/step_primary_account.dart';
 import '../widgets/step_profile_avatar.dart';
+import '../widgets/step_receipt_ocr.dart';
 import '../widgets/step_recurring_bills.dart';
 import '../widgets/step_starter_categories.dart';
 
 class OnboardingWizardScreen extends ConsumerStatefulWidget {
-  const OnboardingWizardScreen({super.key});
+  const OnboardingWizardScreen({
+    super.key,
+    this.initialStep = 0,
+  });
+
+  /// Allows launching directly to a specific step (useful for debugging and testing)
+  final int initialStep;
+
+  static Future<void> show(BuildContext context, {int initialStep = 0}) {
+    return Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OnboardingWizardScreen(initialStep: initialStep),
+      ),
+    );
+  }
 
   @override
   ConsumerState<OnboardingWizardScreen> createState() => _OnboardingWizardScreenState();
 }
 
 class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen> {
-  final PageController _pageController = PageController();
-  int _currentStep = 0;
-  static const int _totalSetupSteps = 4; // Steps 1 to 4 (Step 5 is All Set celebration)
+  late final PageController _pageController;
+  late int _currentStep;
+  static const int _totalSetupSteps = 5; // Steps 1 to 5 (Step 6 is All Set celebration)
+
+  @override
+  void initState() {
+    super.initState();
+    _currentStep = widget.initialStep.clamp(0, 5);
+    _pageController = PageController(initialPage: _currentStep);
+  }
 
   @override
   void dispose() {
@@ -37,7 +60,7 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
   }
 
   void _next() {
-    if (_currentStep < 4) {
+    if (_currentStep < 5) {
       _goToStep(_currentStep + 1);
     }
   }
@@ -53,7 +76,7 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
     final isDark = context.isDark;
     final primaryAccent = isDark ? AppColors.primary : const Color(0xFF15803D);
 
-    // Progress ranges from 0.25 on Step 1 to 1.0 on Step 4. Step 5 (All Set) hides the bar.
+    // Progress ranges from 0.20 on Step 1 to 1.0 on Step 5. Step 6 (All Set) hides the bar.
     final progress = _currentStep < _totalSetupSteps
         ? ((_currentStep + 1) / _totalSetupSteps).clamp(0.0, 1.0)
         : 1.0;
@@ -64,7 +87,7 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
           child: Column(
             children: [
               // Top Navigation & Progress Bar
-              if (_currentStep < 4)
+              if (_currentStep < 5)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
                   child: Column(
@@ -152,6 +175,7 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
                     StepPrimaryAccount(onNext: _next, onSkip: _next),
                     StepStarterCategories(onNext: _next, onSkip: _next),
                     StepRecurringBills(onNext: _next, onSkip: _next),
+                    StepReceiptOcr(onNext: _next, onSkip: _next),
                     const StepAllSet(),
                   ],
                 ),
