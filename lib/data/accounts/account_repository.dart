@@ -21,12 +21,30 @@ class AccountRepository {
     return rows.map((row) => AccountBalance.fromJson(row)).toList();
   }
 
-  Future<void> create(Account account) async {
-    await supabase.from('accounts').insert({
+  Future<void> create(Account account, {num initialBalance = 0}) async {
+    final res = await supabase.from('accounts').insert({
       'name': account.name,
       'type': account.type,
       'currency': account.currency,
-    });
+    }).select().single();
+
+    final accountId = res['id'] as String;
+
+    if (initialBalance > 0) {
+      await supabase.from('transactions').insert({
+        'account_id': accountId,
+        'type': 'income',
+        'amount': initialBalance,
+        'description': 'Initial Balance',
+        'transaction_date': DateTime.now().toIso8601String().split('T').first,
+      });
+    }
+  }
+
+  Future<void> activate(String accountId) async {
+    await supabase
+        .from('accounts')
+        .update({'is_active': true}).eq('id', accountId);
   }
 
   Future<void> deactivate(String accountId) async {

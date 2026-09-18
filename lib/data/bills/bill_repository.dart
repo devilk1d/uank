@@ -24,13 +24,19 @@ class BillRepository {
   }
 
   /// Status pembayaran bulan berjalan untuk semua tagihan.
-  /// Baris bulan ini dibuat otomatis oleh function SQL
-  /// `generate_monthly_bill_payments()` (dijadwalkan lewat cron).
   Future<List<BillPayment>> getCurrentMonthPayments() async {
+    return getPaymentsForMonth(DateTime.now());
+  }
+
+  /// Status pembayaran untuk bulan tertentu (format YYYY-MM-01).
+  Future<List<BillPayment>> getPaymentsForMonth(DateTime month) async {
+    final startOfMonth = DateTime(month.year, month.month, 1).toIso8601String().split('T').first;
+    final nextMonth = DateTime(month.year, month.month + 1, 1).toIso8601String().split('T').first;
     final rows = await supabase
         .from('bill_payments')
         .select()
-        .gte('period_month', _firstDayOfThisMonth());
+        .gte('period_month', startOfMonth)
+        .lt('period_month', nextMonth);
     return rows.map((row) => BillPayment.fromJson(row)).toList();
   }
 
@@ -42,17 +48,21 @@ class BillRepository {
     required String accountId,
     required num amount,
     String? categoryId,
+    DateTime? periodMonth,
+    DateTime? paidDate,
   }) async {
-    await supabase.rpc('pay_bill', params: {
+    final params = <String, dynamic>{
       'p_bill_id': billId,
       'p_account_id': accountId,
       'p_amount': amount,
       'p_category_id': categoryId,
-    });
-  }
-
-  String _firstDayOfThisMonth() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, 1).toIso8601String().split('T').first;
+    };
+    if (periodMonth != null) {
+      params['p_period'] = DateTime(periodMonth.year, periodMonth.month, 1).toIso8601String().split('T').first;
+    }
+    if (paidDate != null) {
+      params['p_paid_date'] = DateTime(paidDate.year, paidDate.month, paidDate.day).toIso8601String().split('T').first;
+    }
+    await supabase.rpc('pay_bill', params: params);
   }
 }

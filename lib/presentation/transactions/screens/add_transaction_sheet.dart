@@ -1,0 +1,821 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/receipt_ocr_parser.dart';
+import '../../../core/widgets/app_calendar_sheet.dart';
+import '../../../core/widgets/app_dropdown.dart';
+import '../../../core/widgets/receipt_attachment_picker.dart';
+import '../../../domain/entities/category.dart';
+import '../../../domain/entities/transaction.dart';
+import '../../accounts/providers/account_providers.dart';
+import '../../categories/providers/category_providers.dart';
+import '../../categories/screens/categories_screen.dart';
+import '../../repository_providers.dart';
+import '../../settings/providers/receipt_ocr_provider.dart';
+import '../providers/transaction_providers.dart';
+
+class AddTransactionSheet extends ConsumerStatefulWidget {
+  const AddTransactionSheet({super.key, this.transactionToEdit});
+
+  final Transaction? transactionToEdit;
+
+  static Future<void> show(BuildContext context, {Transaction? transactionToEdit}) {
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AddTransactionSheet(transactionToEdit: transactionToEdit),
+    );
+  }
+
+  @override
+  ConsumerState<AddTransactionSheet> createState() => _AddTransactionSheetState();
+}
+
+class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _amountController;
+  late final TextEditingController _descController;
+
+  late String _selectedType;
+  String _selectedCurrency = 'IDR';
+  String? _selectedAccountId;
+  Category? _selectedCategory;
+  late DateTime _selectedDate;
+  bool _isLoading = false;
+
+  // Staged Receipt Image State (In-Memory)
+  Uint8List? _stagedImageBytes;
+  String? _stagedImageExtension;
+  String? _existingAttachmentUrl;
+  bool _isExistingAttachmentRemoved = false;
+  bool _isScanningOcr = false;
+
+  bool get isEditing => widget.transactionToEdit != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final editTx = widget.transactionToEdit;
+    if (editTx != null) {
+      _selectedType = editTx.type;
+      _selectedAccountId = editTx.accountId;
+      _selectedDate = editTx.transactionDate;
+      _existingAttachmentUrl = editTx.attachmentUrl;
+      _amountController = TextEditingController(
+        text: CurrencyInputFormatter.format(editTx.amount, currency: _selectedCurrency),
+      );
+      _descController = TextEditingController(text: editTx.description ?? '');
+    } else {
+      _selectedType = 'expense';
+      _selectedDate = DateTime.now();
+      _amountController = TextEditingController();
+      _descController = TextEditingController();
+    }
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
+
+  void _handleOcrResult(OcrResult ocr) {
+    setState(() {
+      _isScanningOcr = false;
+
+      if (ocr.currency != null && ocr.currency != _selectedCurrency) {
+        _selectedCurrency = ocr.currency!;
+        final accounts = ref.read(accountsProvider).asData?.value;
+        if (accounts != null) {
+          final matching = accounts.where((a) => a.currency == _selectedCurrency).toList();
+          if (_selectedAccountId == null || !matching.any((a) => a.id == _selectedAccountId)) {
+            _selectedAccountId = matching.firstOrNull?.id;
+          }
+        }
+      }
+
+      if (ocr.amount != null) {
+        _amountController.text = CurrencyInputFormatter.format(
+          ocr.amount!,
+          currency: _selectedCurrency,
+        );
+      }
+
+      if (ocr.date != null) {
+        _selectedDate = ocr.date!;
+      }
+    });
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedAccountId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a source account'),
+          backgroundColor: AppColors.red,
+        ),
+      );
+      return;
+    }
+
+    final amount = CurrencyInputFormatter.parse(_amountController.text, currency: _selectedCurrency);
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid amount'),
+          backgroundColor: AppColors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      String? finalAttachmentUrl = _existingAttachmentUrl;
+      if (_isExistingAttachmentRemoved) {
+        finalAttachmentUrl = null;
+      }
+
+      // If user staged a new image in memory, upload it now upon save
+      if (_stagedImageBytes != null) {
+        final uploadUrl = await ref
+            .read(transactionRepositoryProvider)
+            .uploadReceiptImage(
+              bytes: _stagedImageBytes!,
+              fileExtension: _stagedImageExtension ?? 'jpg',
+            );
+        finalAttachmentUrl = uploadUrl;
+      }
+
+      if (isEditing) {
+        final updatedTx = widget.transactionToEdit!.copyWith(
+          accountId: _selectedAccountId!,
+          categoryId: _selectedCategory?.id ?? widget.transactionToEdit!.categoryId,
+          type: _selectedType,
+          amount: amount,
+          description: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
+          attachmentUrl: finalAttachmentUrl,
+          transactionDate: _selectedDate,
+        );
+
+        await updateTransaction(
+          ref,
+          updatedTx,
+          oldAttachmentUrl: (_isExistingAttachmentRemoved || _stagedImageBytes != null)
+              ? widget.transactionToEdit!.attachmentUrl
+              : null,
+        );
+
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } else {
+        final newTx = Transaction(
+          id: '', // Generated by database
+          accountId: _selectedAccountId!,
+          categoryId: _selectedCategory?.id,
+          type: _selectedType,
+          amount: amount,
+          description: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
+          attachmentUrl: finalAttachmentUrl,
+          transactionDate: _selectedDate,
+        );
+
+        await createTransaction(ref, newTx);
+
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save transaction: $e'),
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final accountsAsync = ref.watch(accountsProvider);
+    final allCategoriesAsync = ref.watch(categoriesProvider);
+    final isOcrEnabled = ref.watch(receiptOcrSettingProvider);
+
+    // Auto-resolve category on editing if not already set
+    if (isEditing && _selectedCategory == null && widget.transactionToEdit?.categoryId != null) {
+      final allCats = allCategoriesAsync.asData?.value;
+      if (allCats != null) {
+        final match = allCats.where((c) => c.id == widget.transactionToEdit!.categoryId).firstOrNull;
+        if (match != null) {
+          _selectedCategory = match;
+        }
+      }
+    }
+
+    // Auto-resolve currency on editing based on account
+    if (isEditing && _selectedAccountId != null) {
+      final allAccounts = accountsAsync.asData?.value;
+      if (allAccounts != null) {
+        final currentAcc = allAccounts.where((a) => a.id == _selectedAccountId).firstOrNull;
+        if (currentAcc != null && _selectedCurrency != currentAcc.currency) {
+          _selectedCurrency = currentAcc.currency;
+        }
+      }
+    }
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 20, 22, 20 + bottomInset),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border(top: BorderSide(color: context.cardBorder, width: 1.5)),
+      ),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Drag Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: context.textMuted,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Title
+              Text(
+                isEditing ? 'Edit Transaction' : 'Record Transaction',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Toggle Type (Expense vs Income)
+              Container(
+                height: 48,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: context.inputBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: context.cardBorder),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _TypeSwitchButton(
+                        label: 'Expense',
+                        isActive: _selectedType == 'expense',
+                        activeColor: AppColors.red,
+                        onTap: () => setState(() {
+                          _selectedType = 'expense';
+                          _selectedCategory = null;
+                        }),
+                      ),
+                    ),
+                    Expanded(
+                      child: _TypeSwitchButton(
+                        label: 'Income',
+                        isActive: _selectedType == 'income',
+                        activeColor: AppColors.primary,
+                        onTap: () => setState(() {
+                          _selectedType = 'income';
+                          _selectedCategory = null;
+                        }),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Amount & Currency Switcher Row
+              accountsAsync.when(
+                data: (accounts) => Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Amount',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _amountController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: _selectedCurrency == 'MYR'
+                                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))]
+                                : [CurrencyInputFormatter()],
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: context.textPrimary,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: '0',
+                              prefixText: _selectedCurrency == 'IDR' ? 'Rp ' : 'RM ',
+                              prefixStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: context.accentLinkColor),
+                              hintStyle: TextStyle(color: context.textMuted, fontSize: 14),
+                              filled: true,
+                              fillColor: context.inputBg,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: context.cardBorder),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: context.cardBorder),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: const BorderRadius.all(Radius.circular(16)),
+                                borderSide: BorderSide(color: context.isDark ? AppColors.primary : const Color(0xFF15803D), width: 1.2),
+                              ),
+                            ),
+                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Currency',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 50,
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: context.inputBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: context.cardBorder),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedCurrency = 'IDR';
+                                        final matching = accounts.where((a) => a.currency == 'IDR').toList();
+                                        if (_selectedAccountId == null || !matching.any((a) => a.id == _selectedAccountId)) {
+                                          _selectedAccountId = matching.firstOrNull?.id;
+                                        }
+                                      });
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: _selectedCurrency == 'IDR' ? AppColors.primary : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'IDR',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: _selectedCurrency == 'IDR' ? Colors.black : context.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedCurrency = 'MYR';
+                                        final matching = accounts.where((a) => a.currency == 'MYR').toList();
+                                        if (_selectedAccountId == null || !matching.any((a) => a.id == _selectedAccountId)) {
+                                          _selectedAccountId = matching.firstOrNull?.id;
+                                        }
+                                      });
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: _selectedCurrency == 'MYR' ? AppColors.primary : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'MYR',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: _selectedCurrency == 'MYR' ? Colors.black : context.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
+              const SizedBox(height: 16),
+
+              // Account Selector Dropdown - Filtered by selected currency
+              accountsAsync.when(
+                data: (accounts) {
+                  final matchingAccounts = accounts.where((a) => a.currency == _selectedCurrency).toList();
+
+                  // Auto-resolve selected account if not set or invalid for this currency
+                  if (_selectedAccountId == null || !matchingAccounts.any((a) => a.id == _selectedAccountId)) {
+                    _selectedAccountId = matchingAccounts.firstOrNull?.id;
+                  }
+
+                  if (matchingAccounts.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: context.inputBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: context.cardBorder),
+                      ),
+                      child: Text(
+                        'No $_selectedCurrency accounts available',
+                        style: const TextStyle(color: AppColors.orange, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    );
+                  }
+
+                  return AppDropdownFormField<String>(
+                    key: ValueKey('tx_source_account_${_selectedCurrency}_$_selectedAccountId'),
+                    value: _selectedAccountId,
+                    labelText: 'Source Account',
+                    sheetTitle: 'Select Source Account',
+                    items: matchingAccounts.map((acc) {
+                      return AppDropdownItem<String>(
+                        value: acc.id,
+                        label: '${acc.name} (${acc.currency})',
+                        subtitle: 'Type: ${acc.type.toUpperCase()}',
+                        icon: Icon(
+                          acc.type == 'bank'
+                              ? Icons.account_balance_outlined
+                              : acc.type == 'ewallet'
+                                  ? Icons.account_balance_wallet_outlined
+                                  : Icons.payments_outlined,
+                          size: 20,
+                          color: context.accentIconColor,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _selectedAccountId = val);
+                      }
+                    },
+                  );
+                },
+                loading: () => const LinearProgressIndicator(),
+                error: (e, _) => Text('$e', style: const TextStyle(color: AppColors.red)),
+              ),
+              const SizedBox(height: 16),
+
+              // Category Selector
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Category',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
+                  ),
+                  const SizedBox(height: 6),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CategoriesScreen(
+                            pickerMode: true,
+                            initialType: _selectedType,
+                            onSelect: (cat) => setState(() => _selectedCategory = cat),
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      height: 50,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: context.inputBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: context.cardBorder),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _selectedCategory != null
+                                      ? (_selectedType == 'expense' ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.15)
+                                      : (context.isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05)),
+                                ),
+                                child: Icon(
+                                  _selectedCategory != null
+                                      ? _getCategoryIcon(_selectedCategory!.icon)
+                                      : Icons.category_outlined,
+                                  size: 15,
+                                  color: _selectedCategory != null
+                                      ? (_selectedType == 'expense' ? AppColors.red : (context.isDark ? AppColors.primaryLight : const Color(0xFF059669)))
+                                      : context.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                _selectedCategory?.name ?? 'Select Category',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: _selectedCategory != null ? FontWeight.w600 : FontWeight.w500,
+                                  color: _selectedCategory != null ? context.textPrimary : context.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              if (_selectedCategory != null)
+                                GestureDetector(
+                                  onTap: () => setState(() => _selectedCategory = null),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    margin: const EdgeInsets.only(right: 6),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: context.isDark ? Colors.black38 : AppColors.lightCardBorder,
+                                    ),
+                                    child: Icon(Icons.close_rounded, size: 14, color: context.textSecondary),
+                                  ),
+                                ),
+                              Icon(Icons.chevron_right_rounded, size: 18, color: context.textSecondary),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Date Picker
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Transaction Date',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
+                  ),
+                  const SizedBox(height: 6),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () async {
+                      final picked = await AppDatePickerSheet.show(
+                        context,
+                        initialDate: _selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2035),
+                      );
+                      if (picked != null) {
+                        setState(() => _selectedDate = picked);
+                      }
+                    },
+                    child: Container(
+                      height: 50,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: context.inputBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: context.cardBorder),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_month_rounded, size: 18, color: context.accentIconColor),
+                              const SizedBox(width: 10),
+                              Text(
+                                '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: context.textPrimary),
+                              ),
+                            ],
+                          ),
+                          Icon(Icons.chevron_right_rounded, size: 18, color: context.textSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Description field
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Description / Notes (Optional)',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary),
+                  ),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _descController,
+                    style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      hintText: 'e.g., Lunch with friends, groceries, wifi',
+                      hintStyle: TextStyle(color: context.textMuted, fontSize: 14),
+                      filled: true,
+                      fillColor: context.inputBg,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: context.cardBorder),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: context.cardBorder),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(16)),
+                        borderSide: BorderSide(color: AppColors.primary, width: 1.2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Receipt / Proof Attachment (Only visible if enabled in Settings)
+              if (isOcrEnabled) ...[
+                ReceiptAttachmentPicker(
+                  stagedBytes: _stagedImageBytes,
+                  stagedExtension: _stagedImageExtension,
+                  existingUrl: _existingAttachmentUrl,
+                  isExistingRemoved: _isExistingAttachmentRemoved,
+                  isScanningOcr: _isScanningOcr,
+                  isOcrEnabled: true,
+                  onImageSelected: (bytes, ext, path) {
+                    setState(() {
+                      _stagedImageBytes = bytes;
+                      _stagedImageExtension = ext;
+                      _isExistingAttachmentRemoved = false;
+                      _isScanningOcr = true;
+                    });
+                  },
+                  onImageRemoved: () {
+                    setState(() {
+                      _stagedImageBytes = null;
+                      _stagedImageExtension = null;
+                      _isExistingAttachmentRemoved = true;
+                      _isScanningOcr = false;
+                    });
+                  },
+                  onOcrParsed: (ocr) => _handleOcrResult(ocr),
+                ),
+                const SizedBox(height: 8),
+              ],
+              const SizedBox(height: 24),
+
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  onPressed: _isLoading ? null : _submit,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                        )
+                      : Text(
+                          isEditing ? 'Update Transaction' : 'Save Transaction',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  IconData _getCategoryIcon(String? iconName) {
+    switch (iconName) {
+      case 'restaurant':
+        return Icons.restaurant_rounded;
+      case 'directions_car':
+        return Icons.directions_car_rounded;
+      case 'shopping_bag':
+        return Icons.shopping_bag_rounded;
+      case 'medical_services':
+        return Icons.medical_services_rounded;
+      case 'bolt':
+        return Icons.bolt_rounded;
+      case 'movie':
+        return Icons.movie_rounded;
+      case 'payments':
+        return Icons.payments_rounded;
+      case 'card_giftcard':
+        return Icons.card_giftcard_rounded;
+      case 'savings':
+        return Icons.savings_rounded;
+      default:
+        return Icons.category_rounded;
+    }
+  }
+}
+
+class _TypeSwitchButton extends StatelessWidget {
+  const _TypeSwitchButton({
+    required this.label,
+    required this.isActive,
+    required this.activeColor,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isActive;
+  final Color activeColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? activeColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: isActive ? Colors.black : context.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

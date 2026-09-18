@@ -26,7 +26,7 @@ final class TransfersProvider
         argument: null,
         retry: null,
         name: r'transfersProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -46,4 +46,4 @@ final class TransfersProvider
   }
 }
 
-String _$transfersHash() => r'082c12757438b72dd230e6839b750939f911667b';
+String _$transfersHash() => r'b2e8142b9c2fde434677bbf7c2f92d34652ca200';

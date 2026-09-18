@@ -33,7 +33,7 @@ final class AccountsProvider
         argument: null,
         retry: null,
         name: r'accountsProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -53,7 +53,7 @@ final class AccountsProvider
   }
 }
 
-String _$accountsHash() => r'8ba1d3aeae2670dbea3a3601beaab07ac22c4467';
+String _$accountsHash() => r'959e38fa25108531407ac85292451983353a358d';
 
 /// Saldo tiap akun (dari VIEW `account_balances`), dipakai di Dashboard.
 
@@ -79,7 +79,7 @@ final class AccountBalancesProvider
         argument: null,
         retry: null,
         name: r'accountBalancesProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -99,4 +99,4 @@ final class AccountBalancesProvider
   }
 }
 
-String _$accountBalancesHash() => r'5a576494f9a05bcfb6c40c04e99a52c43555cba4';
+String _$accountBalancesHash() => r'a06ba4b044749bdffb98e7710dbab839217320a5';
