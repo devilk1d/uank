@@ -138,201 +138,273 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: RefreshIndicator(
-            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
-            backgroundColor: context.cardBg,
-            onRefresh: () async {
-              ref.invalidate(accountBalancesProvider);
-              ref.invalidate(accountsProvider);
-              ref.invalidate(transactionsProvider);
-              ref.invalidate(categoriesProvider);
-              ref.invalidate(savingGoalsProvider);
-              await Future.wait([
-                ref.read(accountBalancesProvider.future),
-                ref.read(transactionsProvider.future),
-                ref.read(categoriesProvider.future),
-                ref.read(savingGoalsProvider.future),
-              ]);
-            },
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
-              children: [
-                // 1. Header (Title & Standardized Add Button & Eye Toggle)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Accounts & Wallets',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                    Row(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1280),
+              child: RefreshIndicator(
+                color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                backgroundColor: context.cardBg,
+                onRefresh: () async {
+                  ref.invalidate(accountBalancesProvider);
+                  ref.invalidate(accountsProvider);
+                  ref.invalidate(transactionsProvider);
+                  ref.invalidate(categoriesProvider);
+                  ref.invalidate(savingGoalsProvider);
+                  await Future.wait([
+                    ref.read(accountBalancesProvider.future),
+                    ref.read(transactionsProvider.future),
+                    ref.read(categoriesProvider.future),
+                    ref.read(savingGoalsProvider.future),
+                  ]);
+                },
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isDesktop = constraints.maxWidth >= 900;
+
+                    // Header (Title & Add Button & Eye Toggle)
+                    final headerWidget = Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Eye Visibility Toggle
-                        GestureDetector(
-                          onTap: () => setState(() => _showBalance = !_showBalance),
-                          child: Container(
-                            width: 38,
-                            height: 38,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: context.cardBg,
-                              border: Border.all(color: context.cardBorder),
-                            ),
-                            child: Icon(
-                              _showBalance ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                              size: 18,
-                              color: context.textSecondary,
-                            ),
+                        Text(
+                          'Accounts & Wallets',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                            color: context.textPrimary,
                           ),
                         ),
-                        GestureDetector(
-                          onTap: () => AddAccountSheet.show(context),
-                          child: Container(
-                            height: 38,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: 0.35),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
+                        Row(
+                          children: [
+                            // Eye Visibility Toggle
+                            GestureDetector(
+                              onTap: () => setState(() => _showBalance = !_showBalance),
+                              child: Container(
+                                width: 38,
+                                height: 38,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: context.cardBg,
+                                  border: Border.all(color: context.cardBorder),
                                 ),
-                              ],
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add_rounded, size: 18, color: Colors.black),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Add',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black,
-                                  ),
+                                child: Icon(
+                                  _showBalance ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                  size: 18,
+                                  color: context.textSecondary,
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
+                            GestureDetector(
+                              onTap: () => AddAccountSheet.show(context),
+                              child: Container(
+                                height: 38,
+                                padding: const EdgeInsets.symmetric(horizontal: 14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(alpha: 0.35),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_rounded, size: 18, color: Colors.black),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Add',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-
-                // 2. Swipable Horizontal Digital Card Carousel
-                balancesAsync.when(
-                  data: (balancesList) {
-                    if (balancesList.isEmpty) {
-                      return _buildEmptyAccountsHero();
-                    }
-                    return AccountCardCarousel(
-                      balances: balancesList,
-                      currentIndex: _activeCardIndex.clamp(0, balancesList.length),
-                      showBalance: _showBalance,
-                      onPageChanged: (idx) => setState(() => _activeCardIndex = idx),
-                      onAddAccount: () => AddAccountSheet.show(context),
-                      onToggleActive: (b) => _handleToggleAccountActive(context, ref, b),
                     );
-                  },
-                  loading: () => const _LoadingBlock(height: 195),
-                  error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.red))),
-                ),
-                const SizedBox(height: 18),
 
-                // If user slides to the "Add New Account" card, display the Add Account guide
-                if (isAddAccountSelected) ...[
-                  _buildAddAccountSlidePlaceholder(context),
-                ] else ...[
-                  // 3. Analytics Filter Pills (Overview | Spending | Income)
-                  SizedBox(
-                    height: 36,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _analyticsTabs.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final isSelected = _selectedAnalyticsTab == index;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedAnalyticsTab = index),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primary : context.cardBg,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected ? AppColors.primary : context.cardBorder,
-                              ),
-                            ),
-                            child: Text(
-                              _analyticsTabs[index],
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: isSelected ? Colors.black : context.textSecondary,
-                              ),
-                            ),
-                          ),
+                    // Carousel Widget
+                    final carouselWidget = balancesAsync.when(
+                      data: (balancesList) {
+                        if (balancesList.isEmpty) {
+                          return _buildEmptyAccountsHero();
+                        }
+                        return AccountCardCarousel(
+                          balances: balancesList,
+                          currentIndex: _activeCardIndex.clamp(0, balancesList.length),
+                          showBalance: _showBalance,
+                          onPageChanged: (idx) => setState(() => _activeCardIndex = idx),
+                          onAddAccount: () => AddAccountSheet.show(context),
+                          onToggleActive: (b) => _handleToggleAccountActive(context, ref, b),
                         );
                       },
-                    ),
-                  ),
-                  const SizedBox(height: 18),
+                      loading: () => const _LoadingBlock(height: 195),
+                      error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.red))),
+                    );
 
-                // 4. Tab Contents
-                // Tab 0: OVERVIEW (Net Cash Flow + Linked Goals + Spending Donut + Spending Trend)
-                if (_selectedAnalyticsTab == 0) ...[
-                  _buildNetCashFlowSummaryCard(
-                    totalIncome: incomeOverviewData.totalAmount,
-                    totalExpense: expenseOverviewData.totalAmount,
-                    currencyCode: activeCurrencyCode,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildLinkedSavingGoalsCard(
-                    goals: savingGoals,
-                    activeAccountId: activeAccountId,
-                    currencyCode: activeCurrencyCode,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSpendingOverviewCard(expenseOverviewData),
-                  const SizedBox(height: 16),
-                  _buildSpendingTrendCard(expenseTrendData),
-                ],
+                    // Analytics Filter Pills
+                    final filterPills = SizedBox(
+                      height: 36,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _analyticsTabs.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final isSelected = _selectedAnalyticsTab == index;
+                          return GestureDetector(
+                            onTap: () => setState(() => _selectedAnalyticsTab = index),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.primary : context.cardBg,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? AppColors.primary : context.cardBorder,
+                                ),
+                              ),
+                              child: Text(
+                                _analyticsTabs[index],
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected ? Colors.black : context.textSecondary,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
 
-                // Tab 1: SPENDING (Spending Overview Donut + Spending Trend)
-                if (_selectedAnalyticsTab == 1) ...[
-                  _buildSpendingOverviewCard(expenseOverviewData),
-                  const SizedBox(height: 16),
-                  _buildSpendingTrendCard(expenseTrendData),
-                ],
+                    // Tab Analytics Cards
+                    final tabCards = [
+                      if (_selectedAnalyticsTab == 0) ...[
+                        _buildSpendingOverviewCard(expenseOverviewData),
+                        const SizedBox(height: 16),
+                        _buildSpendingTrendCard(expenseTrendData),
+                      ],
+                      if (_selectedAnalyticsTab == 1) ...[
+                        _buildSpendingOverviewCard(expenseOverviewData),
+                        const SizedBox(height: 16),
+                        _buildSpendingTrendCard(expenseTrendData),
+                      ],
+                      if (_selectedAnalyticsTab == 2) ...[
+                        _buildIncomeOverviewCard(incomeOverviewData),
+                        const SizedBox(height: 16),
+                        _buildIncomeTrendCard(incomeTrendData),
+                      ],
+                    ];
 
-                // Tab 2: INCOME (Income Inflow Donut + Income Trend)
-                if (_selectedAnalyticsTab == 2) ...[
-                  _buildIncomeOverviewCard(incomeOverviewData),
-                  const SizedBox(height: 16),
-                  _buildIncomeTrendCard(incomeTrendData),
-                ],
-              ],
-            ],
+                    if (isDesktop) {
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(28, 24, 28, 48),
+                        children: [
+                          headerWidget,
+                          const SizedBox(height: 24),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Left Column (Cards, Cash Flow, Goals)
+                              Expanded(
+                                flex: 5,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    carouselWidget,
+                                    const SizedBox(height: 18),
+                                    if (isAddAccountSelected)
+                                      _buildAddAccountSlidePlaceholder(context)
+                                    else ...[
+                                      _buildNetCashFlowSummaryCard(
+                                        totalIncome: incomeOverviewData.totalAmount,
+                                        totalExpense: expenseOverviewData.totalAmount,
+                                        currencyCode: activeCurrencyCode,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      _buildLinkedSavingGoalsCard(
+                                        goals: savingGoals,
+                                        activeAccountId: activeAccountId,
+                                        currencyCode: activeCurrencyCode,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+
+                              // Right Column (Analytics)
+                              if (!isAddAccountSelected)
+                                Expanded(
+                                  flex: 6,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      filterPills,
+                                      const SizedBox(height: 18),
+                                      ...tabCards,
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+
+                    // Mobile single-column
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
+                      children: [
+                        headerWidget,
+                        const SizedBox(height: 18),
+                        carouselWidget,
+                        const SizedBox(height: 18),
+                        if (isAddAccountSelected)
+                          _buildAddAccountSlidePlaceholder(context)
+                        else ...[
+                          filterPills,
+                          const SizedBox(height: 18),
+                          if (_selectedAnalyticsTab == 0) ...[
+                            _buildNetCashFlowSummaryCard(
+                              totalIncome: incomeOverviewData.totalAmount,
+                              totalExpense: expenseOverviewData.totalAmount,
+                              currencyCode: activeCurrencyCode,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildLinkedSavingGoalsCard(
+                              goals: savingGoals,
+                              activeAccountId: activeAccountId,
+                              currencyCode: activeCurrencyCode,
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          ...tabCards,
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildEmptyAccountsHero() {
     return Container(

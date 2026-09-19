@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -51,6 +52,24 @@ class _AccountCardCarouselState extends State<AccountCardCarousel> {
     super.dispose();
   }
 
+  void _goToPrevious() {
+    if (_pageController.hasClients && widget.currentIndex > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOutCubic,
+      );
+    }
+  }
+
+  void _goToNext(int totalCards) {
+    if (_pageController.hasClients && widget.currentIndex < totalCards - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOutCubic,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final totalCards = widget.balances.length + 1; // Accounts + 1 Add Card slide
@@ -59,56 +78,125 @@ class _AccountCardCarouselState extends State<AccountCardCarousel> {
       children: [
         SizedBox(
           height: 195,
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: totalCards,
-            onPageChanged: widget.onPageChanged,
-            itemBuilder: (context, index) {
-              if (index < widget.balances.length) {
-                final balance = widget.balances[index];
-                final gradient = _cardGradients[index % _cardGradients.length];
-                final isLimeTheme = index % _cardGradients.length == 0;
-                final isSelected = widget.currentIndex == index;
+          child: Stack(
+            children: [
+              ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(
+                  dragDevices: {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.trackpad,
+                    PointerDeviceKind.stylus,
+                  },
+                ),
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: totalCards,
+                  onPageChanged: widget.onPageChanged,
+                  itemBuilder: (context, index) {
+                    if (index < widget.balances.length) {
+                      final balance = widget.balances[index];
+                      final gradient = _cardGradients[index % _cardGradients.length];
+                      final isLimeTheme = index % _cardGradients.length == 0;
+                      final isSelected = widget.currentIndex == index;
 
-                return AnimatedScale(
-                  scale: isSelected ? 1.0 : 0.94,
-                  duration: const Duration(milliseconds: 240),
-                  curve: Curves.easeOutCubic,
-                  child: _DigitalWalletCard(
-                    balance: balance,
-                    gradient: gradient,
-                    isLimeTheme: isLimeTheme,
-                    showBalance: widget.showBalance,
-                    onToggleActive: () => widget.onToggleActive(balance),
+                      return AnimatedScale(
+                        scale: isSelected ? 1.0 : 0.94,
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
+                        child: _DigitalWalletCard(
+                          balance: balance,
+                          gradient: gradient,
+                          isLimeTheme: isLimeTheme,
+                          showBalance: widget.showBalance,
+                          onToggleActive: () => widget.onToggleActive(balance),
+                        ),
+                      );
+                    } else {
+                      // Add Card Slide
+                      return AnimatedScale(
+                        scale: widget.currentIndex == index ? 1.0 : 0.94,
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
+                        child: _AddAccountCard(onTap: widget.onAddAccount),
+                      );
+                    }
+                  },
+                ),
+              ),
+
+              // Desktop Left Navigation Arrow
+              if (widget.currentIndex > 0)
+                Positioned(
+                  left: 2,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: Material(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: _goToPrevious,
+                        child: const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Icon(Icons.chevron_left_rounded, color: Colors.white, size: 22),
+                        ),
+                      ),
+                    ),
                   ),
-                );
-              } else {
-                // Add Card Slide
-                return AnimatedScale(
-                  scale: widget.currentIndex == index ? 1.0 : 0.94,
-                  duration: const Duration(milliseconds: 240),
-                  curve: Curves.easeOutCubic,
-                  child: _AddAccountCard(onTap: widget.onAddAccount),
-                );
-              }
-            },
+                ),
+
+              // Desktop Right Navigation Arrow
+              if (widget.currentIndex < totalCards - 1)
+                Positioned(
+                  right: 2,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: Material(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => _goToNext(totalCards),
+                        child: const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Icon(Icons.chevron_right_rounded, color: Colors.white, size: 22),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 12),
 
-        // Pagination Dots Indicator
+        // Pagination Dots Indicator + Quick Nav
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(totalCards, (idx) {
             final isActive = widget.currentIndex == idx;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: isActive ? 22 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: isActive ? (context.isDark ? AppColors.primary : const Color(0xFF15803D)) : context.cardBorder,
-                borderRadius: BorderRadius.circular(3),
+            return GestureDetector(
+              onTap: () {
+                if (_pageController.hasClients) {
+                  _pageController.animateToPage(
+                    idx,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOutCubic,
+                  );
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: isActive ? 22 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: isActive ? (context.isDark ? AppColors.primary : const Color(0xFF15803D)) : context.cardBorder,
+                  borderRadius: BorderRadius.circular(3),
+                ),
               ),
             );
           }),
