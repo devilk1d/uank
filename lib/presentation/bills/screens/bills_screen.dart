@@ -38,173 +38,225 @@ class BillsScreen extends ConsumerWidget {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: RefreshIndicator(
-            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
-            backgroundColor: context.cardBg,
-            onRefresh: () async {
-              ref.invalidate(billsProvider);
-              ref.invalidate(billPaymentsForSelectedMonthProvider);
-              ref.invalidate(accountsProvider);
-              await Future.wait([
-                ref.read(billsProvider.future),
-                ref.read(billPaymentsForSelectedMonthProvider.future),
-                ref.read(accountsProvider.future),
-              ]);
-            },
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
-            children: [
-              // 1. Header
-              _buildHeader(context),
-              const SizedBox(height: 16),
-
-              // 2. Month Switcher Bar
-              _buildMonthSwitcher(context, ref, selectedMonth, isCurrentMonth),
-              const SizedBox(height: 18),
-
-              // 3. Main Bills Content
-              billsAsync.when(
-                data: (bills) {
-                  if (bills.isEmpty) {
-                    return _buildNoBillsState(context);
-                  }
-
-                  final payments = paymentsAsync.value ?? [];
-                  final accounts = accountsAsync.value ?? [];
-
-                  // Map bills to paid status for selected month
-                  final paidBills = <(Bill, BillPayment)>[];
-                  final unpaidBills = <(Bill, BillPayment?)>[];
-
-                  for (final bill in bills) {
-                    final payment = payments.where((p) => p.billId == bill.id).firstOrNull;
-                    if (payment != null && payment.status == 'paid') {
-                      paidBills.add((bill, payment));
-                    } else {
-                      unpaidBills.add((bill, payment));
-                    }
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Overview Progress Hero Card
-                      _MonthlyOverviewCard(
-                        bills: bills,
-                        paidCount: paidBills.length,
-                        paidPayments: paidBills.map((e) => e.$2).toList(),
-                        unpaidBills: unpaidBills.map((e) => e.$1).toList(),
-                        selectedMonth: selectedMonth,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Unpaid Bills Section
-                      if (unpaidBills.isNotEmpty) ...[
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppColors.orange,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'To Pay (${unpaidBills.length})',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: context.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ...unpaidBills.map((item) {
-                          final bill = item.$1;
-                          final account = accounts.where((a) => a.id == bill.accountId).firstOrNull;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _UnpaidBillCard(
-                              bill: bill,
-                              accountName: account?.name,
-                              selectedMonth: selectedMonth,
-                              isCurrentMonth: isCurrentMonth,
-                              onPay: () => PayBillDialog.show(
-                                context,
-                                bill,
-                                periodMonth: selectedMonth,
-                              ),
-                            ),
-                          );
-                        }),
-                      ] else ...[
-                        // All Paid Celebration Card
-                        _buildAllPaidCard(context, selectedMonth),
-                      ],
-
-                      // Paid Bills Section
-                      if (paidBills.isNotEmpty) ...[
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Paid This Month (${paidBills.length})',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: context.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ...paidBills.map((item) {
-                          final bill = item.$1;
-                          final payment = item.$2;
-                          final account = accounts.where((a) => a.id == bill.accountId).firstOrNull;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _PaidBillCard(
-                              bill: bill,
-                              payment: payment,
-                              accountName: account?.name,
-                            ),
-                          );
-                        }),
-                      ],
-                    ],
-                  );
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1280),
+              child: RefreshIndicator(
+                color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                backgroundColor: context.cardBg,
+                onRefresh: () async {
+                  ref.invalidate(billsProvider);
+                  ref.invalidate(billPaymentsForSelectedMonthProvider);
+                  ref.invalidate(accountsProvider);
+                  await Future.wait([
+                    ref.read(billsProvider.future),
+                    ref.read(billPaymentsForSelectedMonthProvider.future),
+                    ref.read(accountsProvider.future),
+                  ]);
                 },
-                loading: () => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 80),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
-                    ),
-                  ),
-                ),
-                error: (e, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 40),
-                    child: Text('Failed to load bills: $e', style: const TextStyle(color: AppColors.red)),
-                  ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isDesktop = constraints.maxWidth >= 900;
+
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        isDesktop ? 28 : 20,
+                        isDesktop ? 24 : 16,
+                        isDesktop ? 28 : 20,
+                        isDesktop ? 48 : 110,
+                      ),
+                      children: [
+                        // 1. Header
+                        _buildHeader(context),
+                        const SizedBox(height: 16),
+
+                        // 2. Month Switcher Bar
+                        _buildMonthSwitcher(context, ref, selectedMonth, isCurrentMonth),
+                        const SizedBox(height: 18),
+
+                        // 3. Main Bills Content
+                        billsAsync.when(
+                          data: (bills) {
+                            if (bills.isEmpty) {
+                              return _buildNoBillsState(context);
+                            }
+
+                            final payments = paymentsAsync.value ?? [];
+                            final accounts = accountsAsync.value ?? [];
+
+                            // Map bills to paid status for selected month
+                            final paidBills = <(Bill, BillPayment)>[];
+                            final unpaidBills = <(Bill, BillPayment?)>[];
+
+                            for (final bill in bills) {
+                              final payment = payments.where((p) => p.billId == bill.id).firstOrNull;
+                              if (payment != null && payment.status == 'paid') {
+                                paidBills.add((bill, payment));
+                              } else {
+                                unpaidBills.add((bill, payment));
+                              }
+                            }
+
+                            final overviewCard = _MonthlyOverviewCard(
+                              bills: bills,
+                              paidCount: paidBills.length,
+                              paidPayments: paidBills.map((e) => e.$2).toList(),
+                              unpaidBills: unpaidBills.map((e) => e.$1).toList(),
+                              selectedMonth: selectedMonth,
+                            );
+
+                            final unpaidSection = Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (unpaidBills.isNotEmpty) ...[
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.orange,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'To Pay (${unpaidBills.length})',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ...unpaidBills.map((item) {
+                                    final bill = item.$1;
+                                    final account = accounts.where((a) => a.id == bill.accountId).firstOrNull;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: _UnpaidBillCard(
+                                        bill: bill,
+                                        accountName: account?.name,
+                                        selectedMonth: selectedMonth,
+                                        isCurrentMonth: isCurrentMonth,
+                                        onPay: () => PayBillDialog.show(
+                                          context,
+                                          bill,
+                                          periodMonth: selectedMonth,
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ] else ...[
+                                  _buildAllPaidCard(context, selectedMonth),
+                                ],
+                              ],
+                            );
+
+                            final paidSection = Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (paidBills.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Paid This Month (${paidBills.length})',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ...paidBills.map((item) {
+                                    final bill = item.$1;
+                                    final payment = item.$2;
+                                    final account = accounts.where((a) => a.id == bill.accountId).firstOrNull;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: _PaidBillCard(
+                                        bill: bill,
+                                        payment: payment,
+                                        accountName: account?.name,
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ],
+                            );
+
+                            if (isDesktop) {
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Left Column (Overview Hero)
+                                  Expanded(
+                                    flex: 5,
+                                    child: overviewCard,
+                                  ),
+                                  const SizedBox(width: 24),
+                                  // Right Column (Bills list)
+                                  Expanded(
+                                    flex: 7,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        unpaidSection,
+                                        paidSection,
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+
+                            // Mobile single column
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                overviewCard,
+                                const SizedBox(height: 24),
+                                unpaidSection,
+                                paidSection,
+                              ],
+                            );
+                          },
+                          loading: () => Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 80),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                              ),
+                            ),
+                          ),
+                          error: (e, _) => Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 80),
+                              child: Text('Error: $e', style: const TextStyle(color: AppColors.red)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
-            ],
             ),
           ),
         ),

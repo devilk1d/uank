@@ -6,7 +6,7 @@ import '../../../core/services/app_initializer.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../onboarding/screens/onboarding_wizard_screen.dart';
 import '../../repository_providers.dart';
-import '../../shell/main_shell.dart';
+import '../../shell/responsive_shell.dart';
 import '../providers/auth_providers.dart';
 import '../screens/login_screen.dart';
 
@@ -28,9 +28,9 @@ class AuthGate extends ConsumerWidget {
           final session = authState.session;
 
           // 1. If currently in exitingApp transition mode (logout / delete account),
-          // keep MainShell mounted until transition completes.
+          // keep ResponsiveShell mounted until transition completes.
           if (transitionMode == AuthTransitionMode.exitingApp) {
-            return const MainShell(key: ValueKey('main_shell'));
+            return const ResponsiveShell(key: ValueKey('main_shell'));
           }
 
           // 2. If session is active and not in recovery mode
@@ -45,7 +45,7 @@ class AuthGate extends ConsumerWidget {
                 ((session.user.userMetadata?['has_completed_onboarding'] as bool?) ?? true);
 
             if (hasCompletedOnboarding) {
-              return const MainShell(key: ValueKey('main_shell'));
+              return const ResponsiveShell(key: ValueKey('main_shell'));
             } else {
               return const OnboardingWizardScreen(key: ValueKey('onboarding_wizard'));
             }
