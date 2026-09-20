@@ -19,6 +19,7 @@ import '../../auth/providers/auth_providers.dart';
 import '../../categories/screens/categories_screen.dart';
 import '../../repository_providers.dart';
 import '../../theme/theme_mode_provider.dart';
+import '../providers/app_info_provider.dart';
 import '../providers/receipt_ocr_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -37,6 +38,7 @@ class SettingsScreen extends ConsumerWidget {
     final isDark = themeMode == ThemeMode.dark;
     final userProfile = ref.watch(userProfileProvider);
     final isOcrEnabled = ref.watch(receiptOcrSettingProvider);
+    final appVersion = ref.watch(appVersionStringProvider);
 
     final displayName = userProfile?.displayName ?? 'User Account';
     final email = userProfile?.email ?? 'user@uank.app';
@@ -46,7 +48,10 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: ListView(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 860),
+              child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
             children: [
               // Header with Title & Back Button (Consistent with other screens)
@@ -354,7 +359,7 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 7),
                     Text(
-                      'v1.0.0',
+                      appVersion,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         color: context.textMuted,
@@ -367,7 +372,9 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildSectionTitle(BuildContext context, String title) {

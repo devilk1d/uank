@@ -36,7 +36,10 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: RefreshIndicator(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
+              child: RefreshIndicator(
             color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
             backgroundColor: context.cardBg,
             onRefresh: () async {
@@ -44,179 +47,209 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
               ref.invalidate(accountsProvider);
               await ref.read(savingGoalsProvider.future);
             },
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
-              children: [
-                // Header (Title & Add Goal CTA)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = constraints.maxWidth >= 900;
+
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    isDesktop ? 28 : 20,
+                    isDesktop ? 24 : 16,
+                    isDesktop ? 28 : 20,
+                    isDesktop ? 48 : 110,
+                  ),
                   children: [
-                    Text(
-                      'Saving Goals',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => AddSavingGoalSheet.show(context),
-                      child: Container(
-                        height: 38,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.35),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                    // Header (Title & Add Goal CTA)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Saving Goals',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                            color: context.textPrimary,
+                          ),
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add_rounded, size: 18, color: Colors.black),
-                            SizedBox(width: 4),
-                            Text(
-                              'Add',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
-                              ),
+                        GestureDetector(
+                          onTap: () => AddSavingGoalSheet.show(context),
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.35),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_rounded, size: 18, color: Colors.black),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Add',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+
+                    goalsAsync.when(
+                      data: (goals) {
+                        // Filter goals by currency if selected
+                        final currencyFiltered = _selectedCurrencyFilter == 'ALL'
+                            ? goals
+                            : goals.where((g) => g.currency == _selectedCurrencyFilter).toList();
+
+                        final inProgressGoals = currencyFiltered.where((g) => !g.isCompleted && g.currentAmount < g.targetAmount).toList();
+                        final completedGoals = currencyFiltered.where((g) => g.isCompleted || g.currentAmount >= g.targetAmount).toList();
+
+                        final activeList = _selectedTabIndex == 0 ? inProgressGoals : completedGoals;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 1. Overall Summary Banner
+                            _buildSummaryBanner(goals),
+                            const SizedBox(height: 20),
+
+                            // 2. Tab Switcher & Currency Filter Row
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // In Progress / Completed Tabs
+                                Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    color: context.cardBg,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: context.cardBorder),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      _buildTabButton('In Progress (${inProgressGoals.length})', 0),
+                                      _buildTabButton('Completed (${completedGoals.length})', 1),
+                                    ],
+                                  ),
+                                ),
+
+                                // Currency Filter
+                                Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    color: context.cardBg,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: context.cardBorder),
+                                  ),
+                                  child: Row(
+                                    children: ['ALL', 'IDR', 'MYR'].map((cur) {
+                                      final isSelected = _selectedCurrencyFilter == cur;
+                                      return GestureDetector(
+                                        onTap: () => setState(() => _selectedCurrencyFilter = cur),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? (context.isDark ? AppColors.primary.withValues(alpha: 0.18) : const Color(0xFF15803D).withValues(alpha: 0.1))
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            cur,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: isSelected
+                                                  ? (context.isDark ? AppColors.primary : const Color(0xFF15803D))
+                                                  : context.textSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // 3. Goals List / Empty State
+                            if (activeList.isEmpty)
+                              _buildEmptyState()
+                            else if (isDesktop) ...[
+                              // 2-Columns Grid on Desktop
+                              LayoutBuilder(
+                                builder: (context, gridConstraints) {
+                                  final cardWidth = (gridConstraints.maxWidth - 16) / 2;
+                                  return Wrap(
+                                    spacing: 16,
+                                    runSpacing: 16,
+                                    children: activeList.map((goal) {
+                                      return SizedBox(
+                                        width: cardWidth,
+                                        child: _buildGoalCard(goal, accountsMap[goal.accountId]?.name),
+                                      );
+                                    }).toList(),
+                                  );
+                                },
+                              ),
+                            ] else
+                              ...activeList.map((goal) => _buildGoalCard(goal, accountsMap[goal.accountId]?.name)),
                           ],
+                        );
+                      },
+                      loading: () => Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40),
+                          child: CircularProgressIndicator(
+                            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                          ),
+                        ),
+                      ),
+                      error: (e, _) => Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.error_outline_rounded, size: 36, color: AppColors.red),
+                              const SizedBox(height: 8),
+                              Text('Failed to load goals: $e', style: TextStyle(color: context.textSecondary, fontSize: 12)),
+                              TextButton(
+                                onPressed: () => ref.invalidate(savingGoalsProvider),
+                                child: Text('Retry', style: TextStyle(color: context.accentLinkColor)),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 18),
-
-                goalsAsync.when(
-                  data: (goals) {
-                    // Filter goals by currency if selected
-                    final currencyFiltered = _selectedCurrencyFilter == 'ALL'
-                        ? goals
-                        : goals.where((g) => g.currency == _selectedCurrencyFilter).toList();
-
-                    final inProgressGoals = currencyFiltered.where((g) => !g.isCompleted && g.currentAmount < g.targetAmount).toList();
-                    final completedGoals = currencyFiltered.where((g) => g.isCompleted || g.currentAmount >= g.targetAmount).toList();
-
-                    final activeList = _selectedTabIndex == 0 ? inProgressGoals : completedGoals;
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 1. Overall Summary Banner
-                        _buildSummaryBanner(goals),
-                        const SizedBox(height: 20),
-
-                        // 2. Tab Switcher & Currency Filter Row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // In Progress / Completed Tabs
-                            Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                color: context.cardBg,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: context.cardBorder),
-                              ),
-                              child: Row(
-                                children: [
-                                  _buildTabButton('In Progress (${inProgressGoals.length})', 0),
-                                  _buildTabButton('Completed (${completedGoals.length})', 1),
-                                ],
-                              ),
-                            ),
-
-                            // Currency Filter
-                            Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                color: context.cardBg,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: context.cardBorder),
-                              ),
-                              child: Row(
-                                children: ['ALL', 'IDR', 'MYR'].map((cur) {
-                                  final isSelected = _selectedCurrencyFilter == cur;
-                                  return GestureDetector(
-                                    onTap: () => setState(() => _selectedCurrencyFilter = cur),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? (context.isDark ? AppColors.primary.withValues(alpha: 0.18) : const Color(0xFF15803D).withValues(alpha: 0.1))
-                                            : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        cur,
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          color: isSelected
-                                              ? (context.isDark ? AppColors.primary : const Color(0xFF15803D))
-                                              : context.textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // 3. Goals List / Empty State
-                        if (activeList.isEmpty)
-                          _buildEmptyState()
-                        else
-                          ...activeList.map((goal) => _buildGoalCard(goal, accountsMap[goal.accountId]?.name)),
-                      ],
-                    );
-                  },
-                  loading: () => Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: CircularProgressIndicator(
-                        color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
-                      ),
-                    ),
-                  ),
-                  error: (e, _) => Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: Column(
-                        children: [
-                          const Icon(Icons.error_outline_rounded, size: 36, color: AppColors.red),
-                          const SizedBox(height: 8),
-                          Text('Failed to load goals: $e', style: TextStyle(color: context.textSecondary, fontSize: 12)),
-                          TextButton(
-                            onPressed: () => ref.invalidate(savingGoalsProvider),
-                            child: Text('Retry', style: TextStyle(color: context.accentLinkColor)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildSummaryBanner(List<SavingGoal> goals) {

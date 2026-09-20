@@ -54,51 +54,102 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: RefreshIndicator(
-            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
-            backgroundColor: context.cardBg,
-            onRefresh: () async {
-              ref.invalidate(accountBalancesProvider);
-              ref.invalidate(accountsProvider);
-              ref.invalidate(transactionsProvider);
-              ref.invalidate(billsProvider);
-              ref.invalidate(currentMonthBillPaymentsProvider);
-              ref.invalidate(unreadNotificationsCountProvider);
-              ref.invalidate(savingGoalsProvider);
-              await Future.wait([
-                ref.read(accountBalancesProvider.future),
-                ref.read(transactionsProvider.future),
-                ref.read(billsProvider.future),
-                ref.read(savingGoalsProvider.future),
-              ]);
-            },
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
-              children: [
-                // 1. Header (Avatar, Greeting & Notification)
-                _buildHeader(unreadNotificationCount),
-                const SizedBox(height: 20),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1280),
+              child: RefreshIndicator(
+                color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                backgroundColor: context.cardBg,
+                onRefresh: () async {
+                  ref.invalidate(accountBalancesProvider);
+                  ref.invalidate(accountsProvider);
+                  ref.invalidate(transactionsProvider);
+                  ref.invalidate(billsProvider);
+                  ref.invalidate(currentMonthBillPaymentsProvider);
+                  ref.invalidate(unreadNotificationsCountProvider);
+                  ref.invalidate(savingGoalsProvider);
+                  await Future.wait([
+                    ref.read(accountBalancesProvider.future),
+                    ref.read(transactionsProvider.future),
+                    ref.read(billsProvider.future),
+                    ref.read(savingGoalsProvider.future),
+                  ]);
+                },
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isDesktop = constraints.maxWidth >= 900;
+                    if (isDesktop) {
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(28, 24, 28, 48),
+                        children: [
+                          _buildHeader(unreadNotificationCount),
+                          const SizedBox(height: 24),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Left Column (Hero Balance + Quick Actions + Bento Grid)
+                              Expanded(
+                                flex: 6,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    balancesAsync.when(
+                                      data: (balances) => _buildHeroBalance(balances, transactions, accountMap),
+                                      loading: () => const _LoadingHero(),
+                                      error: (e, _) => _buildHeroBalance([], transactions, accountMap),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildQuickActions(),
+                                    const SizedBox(height: 24),
+                                    _buildBentoOverviewSection(transactions, balances, bills, payments, accountMap),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+                              // Right Column (Recent Transactions / Activity)
+                              Expanded(
+                                flex: 5,
+                                child: _buildRecentActivitySection(transactionsAsync, accountMap),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
 
-                // 2. Signature Electric Lime Hero Account Balance Card
-                balancesAsync.when(
-                  data: (balances) => _buildHeroBalance(balances, transactions, accountMap),
-                  loading: () => const _LoadingHero(),
-                  error: (e, _) => _buildHeroBalance([], transactions, accountMap),
+                    // Mobile single-column
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
+                      children: [
+                        // 1. Header (Avatar, Greeting & Notification)
+                        _buildHeader(unreadNotificationCount),
+                        const SizedBox(height: 20),
+
+                        // 2. Signature Electric Lime Hero Account Balance Card
+                        balancesAsync.when(
+                          data: (balances) => _buildHeroBalance(balances, transactions, accountMap),
+                          loading: () => const _LoadingHero(),
+                          error: (e, _) => _buildHeroBalance([], transactions, accountMap),
+                        ),
+                        const SizedBox(height: 22),
+
+                        // 3. 4 Quick Action Buttons (Add, Transfer, Bills, Rates)
+                        _buildQuickActions(),
+                        const SizedBox(height: 24),
+
+                        // 4. 2x2 Bento Overview Grid (Income, Expenses, Savings, Bills)
+                        _buildBentoOverviewSection(transactions, balances, bills, payments, accountMap),
+                        const SizedBox(height: 24),
+
+                        // 5. Activity / Recent Transactions in Large Dark Card
+                        _buildRecentActivitySection(transactionsAsync, accountMap),
+                      ],
+                    );
+                  },
                 ),
-                const SizedBox(height: 22),
-
-                // 3. 4 Quick Action Buttons (Add, Transfer, Bills, Rates)
-                _buildQuickActions(),
-                const SizedBox(height: 24),
-
-                // 4. 2x2 Bento Overview Grid (Income, Expenses, Savings, Bills)
-                _buildBentoOverviewSection(transactions, balances, bills, payments, accountMap),
-                const SizedBox(height: 24),
-
-                // 5. Activity / Recent Transactions in Large Dark Card
-                _buildRecentActivitySection(transactionsAsync, accountMap),
-              ],
+              ),
             ),
           ),
         ),

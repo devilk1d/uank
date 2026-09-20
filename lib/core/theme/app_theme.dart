@@ -67,6 +67,18 @@ class AppTheme {
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: AppColors.darkCardBg,
         surfaceTintColor: Colors.transparent,
+        constraints: BoxConstraints(maxWidth: 580),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: AppColors.darkCardBg,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(24)),
+          side: BorderSide(color: AppColors.darkCardBorder, width: 1.2),
+        ),
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.darkCardBorder,
@@ -134,6 +146,18 @@ class AppTheme {
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: AppColors.lightCardBg,
         surfaceTintColor: Colors.transparent,
+        constraints: BoxConstraints(maxWidth: 580),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: AppColors.lightCardBg,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(24)),
+          side: BorderSide(color: AppColors.lightCardBorder, width: 1.2),
+        ),
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.lightCardBorder,
