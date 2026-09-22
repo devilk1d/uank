@@ -11,7 +11,7 @@ final appVersionStringProvider = Provider<String>((ref) {
   final packageInfoAsync = ref.watch(packageInfoProvider);
   return packageInfoAsync.when(
     data: (info) => 'v${info.version}',
-    loading: () => 'v1.1.3',
-    error: (err, stack) => 'v1.1.3',
+    loading: () => 'v1.1.4',
+    error: (err, stack) => 'v1.1.4',
   );
 });
