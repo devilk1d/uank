@@ -64,8 +64,10 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
       _fromAccountId = editTr.fromAccountId;
       _toAccountId = editTr.toAccountId;
       _existingAttachmentUrl = editTr.attachmentUrl;
+      final accounts = ref.read(accountsProvider).asData?.value;
+      final fromAcc = accounts?.where((a) => a.id == editTr.fromAccountId).firstOrNull;
       _amountFromController = TextEditingController(
-        text: CurrencyInputFormatter.format(editTr.amountFrom),
+        text: CurrencyInputFormatter.format(editTr.amountFrom, currency: fromAcc?.currency),
       );
       _rateController = TextEditingController(text: editTr.exchangeRate.toString());
       _notesController = TextEditingController(text: editTr.notes ?? '');
@@ -646,9 +648,7 @@ class _AddTransferSheetState extends ConsumerState<AddTransferSheet> {
                           TextFormField(
                             controller: _amountFromController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: fromAcc?.currency == 'MYR'
-                                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))]
-                                : [CurrencyInputFormatter()],
+                            inputFormatters: [CurrencyInputFormatter()],
                             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary),
                             decoration: InputDecoration(
                               hintText: '0',

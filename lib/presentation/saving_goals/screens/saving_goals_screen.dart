@@ -126,8 +126,11 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // 1. Overall Summary Banner
-                            _buildSummaryBanner(goals),
+                            // 1. Overall Summary Banner (Bento 3-Card on Desktop, Banner on Mobile)
+                            if (isDesktop)
+                              _buildDesktopBentoSummary(goals, inProgressGoals.length, completedGoals.length)
+                            else
+                              _buildSummaryBanner(goals),
                             const SizedBox(height: 20),
 
                             // 2. Tab Switcher & Currency Filter Row
@@ -192,12 +195,13 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
 
                             // 3. Goals List / Empty State
                             if (activeList.isEmpty)
-                              _buildEmptyState()
+                              (isDesktop ? _buildDesktopEmptyState() : _buildEmptyState())
                             else if (isDesktop) ...[
-                              // 2-Columns Grid on Desktop
+                              // Responsive 2-to-3 Columns Grid on Desktop
                               LayoutBuilder(
                                 builder: (context, gridConstraints) {
-                                  final cardWidth = (gridConstraints.maxWidth - 16) / 2;
+                                  final crossAxisCount = gridConstraints.maxWidth > 1200 ? 3 : 2;
+                                  final cardWidth = (gridConstraints.maxWidth - ((crossAxisCount - 1) * 16)) / crossAxisCount;
                                   return Wrap(
                                     spacing: 16,
                                     runSpacing: 16,
@@ -727,6 +731,415 @@ class _SavingGoalsScreenState extends ConsumerState<SavingGoalsScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopBentoSummary(List<SavingGoal> goals, int inProgressCount, int completedCount) {
+    final idrGoals = goals.where((g) => g.currency == 'IDR').toList();
+    final myrGoals = goals.where((g) => g.currency == 'MYR').toList();
+
+    final idrSaved = idrGoals.fold<num>(0, (sum, g) => sum + g.currentAmount);
+    final idrTarget = idrGoals.fold<num>(0, (sum, g) => sum + g.targetAmount);
+    final idrProgress = idrTarget > 0 ? (idrSaved / idrTarget).clamp(0.0, 1.0) : 0.0;
+
+    final myrSaved = myrGoals.fold<num>(0, (sum, g) => sum + g.currentAmount);
+    final myrTarget = myrGoals.fold<num>(0, (sum, g) => sum + g.targetAmount);
+    final myrProgress = myrTarget > 0 ? (myrSaved / myrTarget).clamp(0.0, 1.0) : 0.0;
+
+    return Row(
+      children: [
+        // Bento 1: IDR Goal Metrics
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: context.cardBg,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: context.cardBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: context.isDark ? 0.25 : 0.05),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: (context.isDark ? AppColors.primary : const Color(0xFF15803D)).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.savings_rounded, size: 15, color: context.accentIconColor),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'IDR Savings',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: context.inputBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${(idrProgress * 100).toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Rp ${CurrencyInputFormatter.format(idrSaved)}',
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  idrGoals.isEmpty ? 'No IDR goals' : 'Target: Rp ${CurrencyInputFormatter.format(idrTarget)}',
+                  style: TextStyle(fontSize: 11, color: context.textMuted),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: idrProgress,
+                    minHeight: 6,
+                    backgroundColor: context.cardBorder,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+
+        // Bento 2: MYR Goal Metrics
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: context.cardBg,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: context.cardBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: context.isDark ? 0.25 : 0.05),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.teal.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.account_balance_wallet_rounded, size: 15, color: AppColors.teal),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'MYR Savings',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: context.inputBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${(myrProgress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.teal,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'RM ${CurrencyInputFormatter.format(myrSaved)}',
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  myrGoals.isEmpty ? 'No MYR goals' : 'Target: RM ${CurrencyInputFormatter.format(myrTarget)}',
+                  style: TextStyle(fontSize: 11, color: context.textMuted),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: myrProgress,
+                    minHeight: 6,
+                    backgroundColor: context.cardBorder,
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.teal),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+
+        // Bento 3: Milestone & Target Health
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: context.cardBg,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: context.cardBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: context.isDark ? 0.25 : 0.05),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.orange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.emoji_events_rounded, size: 15, color: AppColors.orange),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Milestones',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: completedCount > 0 ? AppColors.teal.withValues(alpha: 0.15) : context.inputBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$completedCount/${goals.length}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: completedCount > 0 ? AppColors.teal : context.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  goals.isEmpty ? '0 Goals' : '$completedCount Achieved',
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$inProgressCount target(s) actively running',
+                  style: TextStyle(fontSize: 11, color: context.textMuted),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: goals.isEmpty ? 0.0 : (completedCount / goals.length).clamp(0.0, 1.0),
+                    minHeight: 6,
+                    backgroundColor: context.cardBorder,
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.orange),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: context.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: context.isDark ? 0.25 : 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.primary.withValues(alpha: 0.12),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+            ),
+            child: Icon(Icons.savings_outlined, size: 30, color: context.accentIconColor),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _selectedTabIndex == 0 ? 'No active saving goals yet' : 'No completed goals yet',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: context.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Set a target amount, pick your currency, and track deposits step-by-step.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: context.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+              elevation: 0,
+            ),
+            onPressed: () => AddSavingGoalSheet.show(context),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text(
+              'Create First Goal',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Divider(color: context.cardBorder, height: 1),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'POPULAR GOAL INSPIRATIONS',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: context.textMuted,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildGoalSuggestionChip('🛡️ Emergency Fund (6 Months)'),
+              _buildGoalSuggestionChip('✈️ Holiday & Travel'),
+              _buildGoalSuggestionChip('💻 Workstation / Laptop'),
+              _buildGoalSuggestionChip('🚗 Vehicle Down Payment'),
+              _buildGoalSuggestionChip('📈 Investment Capital'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGoalSuggestionChip(String label) {
+    return InkWell(
+      onTap: () => AddSavingGoalSheet.show(context),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: context.inputBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.cardBorder),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: context.textPrimary,
+          ),
         ),
       ),
     );

@@ -65,6 +65,15 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       _selectedAccountId = editTx.accountId;
       _selectedDate = editTx.transactionDate;
       _existingAttachmentUrl = editTx.attachmentUrl;
+
+      final accounts = ref.read(accountsProvider).asData?.value;
+      final initialAcc = accounts?.where((a) => a.id == editTx.accountId).firstOrNull;
+      if (initialAcc != null) {
+        _selectedCurrency = initialAcc.currency;
+      } else if (editTx.amount % 1 != 0) {
+        _selectedCurrency = 'MYR';
+      }
+
       _amountController = TextEditingController(
         text: CurrencyInputFormatter.format(editTx.amount, currency: _selectedCurrency),
       );
@@ -331,9 +340,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                           TextFormField(
                             controller: _amountController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: _selectedCurrency == 'MYR'
-                                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))]
-                                : [CurrencyInputFormatter()],
+                            inputFormatters: [CurrencyInputFormatter()],
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,

@@ -70,14 +70,14 @@ class _AddSavingGoalSheetState extends ConsumerState<AddSavingGoalSheet> {
   void initState() {
     super.initState();
     final g = widget.goalToEdit;
+    _currency = g?.currency ?? 'IDR';
     _nameController = TextEditingController(text: g?.name ?? '');
     _targetAmountController = TextEditingController(
-      text: g != null ? CurrencyInputFormatter.format(g.targetAmount) : '',
+      text: g != null ? CurrencyInputFormatter.format(g.targetAmount, currency: _currency) : '',
     );
     _currentAmountController = TextEditingController(
-      text: g != null ? CurrencyInputFormatter.format(g.currentAmount) : '0',
+      text: g != null ? CurrencyInputFormatter.format(g.currentAmount, currency: _currency) : '0',
     );
-    _currency = g?.currency ?? 'IDR';
     _selectedAccountId = g?.accountId;
     _selectedIcon = g?.icon ?? 'savings';
     _selectedColor = g?.color ?? '#CCFF00';
