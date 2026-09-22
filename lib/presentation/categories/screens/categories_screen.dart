@@ -26,11 +26,19 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   late int _selectedTabIndex; // 0: expense, 1: income
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _selectedTabIndex = widget.initialType == 'income' ? 1 : 0;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   final _iconOptions = const [
@@ -776,238 +784,465 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header with Back Button, Title & Add Category Button
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        if (Navigator.canPop(context)) ...[
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: context.cardBg,
-                                border: Border.all(color: context.cardBorder),
-                              ),
-                              child: Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                size: 16,
-                                color: context.textPrimary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                        ],
-                        Text(
-                          widget.pickerMode ? 'Select Category' : 'Categories',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                            color: context.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    GestureDetector(
-                      onTap: _showAddCategorySheet,
-                      child: Container(
-                        height: 38,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.35),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add_rounded, size: 18, color: Colors.black),
-                            SizedBox(width: 4),
-                            Text(
-                              'Add',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 900;
 
-              // Segmented Tabs
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: context.cardBg,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: context.cardBorder),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _TabButton(
-                          label: 'Expenses',
-                          isActive: _selectedTabIndex == 0,
-                          activeColor: AppColors.red,
-                          onTap: () => setState(() => _selectedTabIndex = 0),
-                        ),
-                      ),
-                      Expanded(
-                        child: _TabButton(
-                          label: 'Income',
-                          isActive: _selectedTabIndex == 1,
-                          activeColor: AppColors.primary,
-                          onTap: () => setState(() => _selectedTabIndex = 1),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Category List / Grid
-              Expanded(
-                child: RefreshIndicator(
-                  color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
-                  backgroundColor: context.cardBg,
-                  onRefresh: () async => ref.invalidate(categoriesProvider),
-                  child: categoriesAsync.when(
-                    data: (allCats) {
-                      final categories = allCats.where((c) => c.type == currentType).toList();
-
-                      if (categories.isEmpty) {
-                        return ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(top: 80),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.category_outlined, size: 48, color: context.textMuted),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'No $currentType categories found',
-                                    style: TextStyle(color: context.textSecondary),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  TextButton.icon(
-                                    onPressed: _showAddCategorySheet,
-                                    icon: Icon(Icons.add, color: context.accentLinkColor),
-                                    label: Text('Add Now', style: TextStyle(color: context.accentLinkColor)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-
-                      return GridView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 2.3,
-                        ),
-                        itemCount: categories.length,
-                        itemBuilder: (context, index) {
-                          final cat = categories[index];
-                          return GestureDetector(
-                            onTap: () {
-                              if (widget.pickerMode && widget.onSelect != null) {
-                                widget.onSelect!(cat);
-                                Navigator.pop(context);
-                              } else {
-                                _showCategoryActionSheet(cat);
-                              }
-                            },
-                            child: GlassCard(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 36,
-                                    height: 36,
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. TOP HEADER BAR
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(isDesktop ? 28 : 20, 16, isDesktop ? 28 : 20, 0),
+                    child: isDesktop
+                        ? Row(
+                            children: [
+                              if (Navigator.canPop(context)) ...[
+                                GestureDetector(
+                                  onTap: () => Navigator.pop(context),
+                                  child: Container(
+                                    width: 38,
+                                    height: 38,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: (currentType == 'expense' ? AppColors.red : (context.isDark ? AppColors.primary : const Color(0xFF059669))).withValues(alpha: 0.15),
+                                      color: context.cardBg,
+                                      border: Border.all(color: context.cardBorder),
                                     ),
                                     child: Icon(
-                                      _getIconData(cat.icon),
-                                      size: 18,
-                                      color: currentType == 'expense' ? AppColors.red : (context.isDark ? AppColors.primaryLight : const Color(0xFF059669)),
+                                      Icons.arrow_back_ios_new_rounded,
+                                      size: 15,
+                                      color: context.textPrimary,
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
+                                ),
+                                const SizedBox(width: 14),
+                              ],
+                              Text(
+                                widget.pickerMode ? 'Select Category' : 'Categories',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.5,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Live category count pill
+                              categoriesAsync.maybeWhen(
+                                data: (allCats) {
+                                  final count = allCats.where((c) => c.type == currentType).length;
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: context.inputBg,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: context.cardBorder),
+                                    ),
                                     child: Text(
-                                      cat.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      '$count ${currentType == 'expense' ? 'Expenses' : 'Incomes'}',
                                       style: TextStyle(
-                                        fontSize: 13,
+                                        fontSize: 11,
                                         fontWeight: FontWeight.w600,
-                                        color: context.textPrimary,
+                                        color: context.textSecondary,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                orElse: () => const SizedBox.shrink(),
+                              ),
+                              const Spacer(),
+
+                              // Search Bar (Desktop)
+                              Container(
+                                width: 220,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: context.cardBg,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: context.cardBorder),
+                                ),
+                                child: TextField(
+                                  controller: _searchController,
+                                  style: TextStyle(fontSize: 12, color: context.textPrimary),
+                                  onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                                  decoration: InputDecoration(
+                                    hintText: 'Search categories...',
+                                    hintStyle: TextStyle(fontSize: 12, color: context.textMuted),
+                                    prefixIcon: Icon(Icons.search_rounded, size: 16, color: context.textMuted),
+                                    suffixIcon: _searchQuery.isNotEmpty
+                                        ? GestureDetector(
+                                            onTap: () {
+                                              _searchController.clear();
+                                              setState(() => _searchQuery = '');
+                                            },
+                                            child: Icon(Icons.close_rounded, size: 14, color: context.textMuted),
+                                          )
+                                        : null,
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              // Compact Segmented Tabs (Desktop)
+                              Container(
+                                width: 200,
+                                height: 38,
+                                padding: const EdgeInsets.all(3),
+                                decoration: BoxDecoration(
+                                  color: context.cardBg,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: context.cardBorder),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _TabButton(
+                                        label: 'Expenses',
+                                        isActive: _selectedTabIndex == 0,
+                                        activeColor: AppColors.red,
+                                        onTap: () => setState(() => _selectedTabIndex = 0),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: _TabButton(
+                                        label: 'Income',
+                                        isActive: _selectedTabIndex == 1,
+                                        activeColor: AppColors.primary,
+                                        onTap: () => setState(() => _selectedTabIndex = 1),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              // Add Button (Desktop)
+                              GestureDetector(
+                                onTap: _showAddCategorySheet,
+                                child: Container(
+                                  height: 38,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.primary.withValues(alpha: 0.35),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.add_rounded, size: 18, color: Colors.black),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'New Category',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      if (Navigator.canPop(context)) ...[
+                                        GestureDetector(
+                                          onTap: () => Navigator.pop(context),
+                                          child: Container(
+                                            width: 40,
+                                            height: 40,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: context.cardBg,
+                                              border: Border.all(color: context.cardBorder),
+                                            ),
+                                            child: Icon(
+                                              Icons.arrow_back_ios_new_rounded,
+                                              size: 16,
+                                              color: context.textPrimary,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                      ],
+                                      Text(
+                                        widget.pickerMode ? 'Select Category' : 'Categories',
+                                        style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.5,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  GestureDetector(
+                                    onTap: _showAddCategorySheet,
+                                    child: Container(
+                                      height: 38,
+                                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppColors.primary.withValues(alpha: 0.35),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.add_rounded, size: 18, color: Colors.black),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Add',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
+                              const SizedBox(height: 14),
+                              // Mobile Segmented Tabs
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: context.cardBg,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: context.cardBorder),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _TabButton(
+                                        label: 'Expenses',
+                                        isActive: _selectedTabIndex == 0,
+                                        activeColor: AppColors.red,
+                                        onTap: () => setState(() => _selectedTabIndex = 0),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: _TabButton(
+                                        label: 'Income',
+                                        isActive: _selectedTabIndex == 1,
+                                        activeColor: AppColors.primary,
+                                        onTap: () => setState(() => _selectedTabIndex = 1),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // 2. CATEGORIES GRID
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
+                      backgroundColor: context.cardBg,
+                      onRefresh: () async => ref.invalidate(categoriesProvider),
+                      child: categoriesAsync.when(
+                        data: (allCats) {
+                          var categories = allCats.where((c) => c.type == currentType).toList();
+                          if (_searchQuery.isNotEmpty) {
+                            categories = categories
+                                .where((c) => c.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+                                .toList();
+                          }
+
+                          if (categories.isEmpty) {
+                            return ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 80),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.category_outlined, size: 48, color: context.textMuted),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        _searchQuery.isNotEmpty
+                                            ? 'No categories match "$_searchQuery"'
+                                            : 'No $currentType categories found',
+                                        style: TextStyle(color: context.textSecondary),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      TextButton.icon(
+                                        onPressed: _showAddCategorySheet,
+                                        icon: Icon(Icons.add, color: context.accentLinkColor),
+                                        label: Text('Add Now', style: TextStyle(color: context.accentLinkColor)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+
+                          final crossAxisCount = isDesktop
+                              ? (constraints.maxWidth > 1400 ? 5 : (constraints.maxWidth > 1100 ? 4 : 3))
+                              : 2;
+
+                          return GridView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(
+                              isDesktop ? 28 : 20,
+                              12,
+                              isDesktop ? 28 : 20,
+                              isDesktop ? 48 : 100,
                             ),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              crossAxisSpacing: isDesktop ? 14 : 12,
+                              mainAxisSpacing: isDesktop ? 14 : 12,
+                              mainAxisExtent: isDesktop ? 76 : null,
+                              childAspectRatio: isDesktop ? 3.5 : 2.3,
+                            ),
+                            itemCount: categories.length,
+                            itemBuilder: (context, index) {
+                              final cat = categories[index];
+                              final isExpense = cat.type == 'expense';
+                              final tintColor = isExpense
+                                  ? AppColors.red
+                                  : (context.isDark ? AppColors.primary : const Color(0xFF059669));
+
+                              return GestureDetector(
+                                onTap: () {
+                                  if (widget.pickerMode && widget.onSelect != null) {
+                                    widget.onSelect!(cat);
+                                    Navigator.pop(context);
+                                  } else {
+                                    _showCategoryActionSheet(cat);
+                                  }
+                                },
+                                child: GlassCard(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 38,
+                                        height: 38,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: tintColor.withValues(alpha: 0.14),
+                                          border: Border.all(
+                                            color: tintColor.withValues(alpha: 0.25),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          _getIconData(cat.icon),
+                                          size: 19,
+                                          color: isExpense
+                                              ? AppColors.red
+                                              : (context.isDark ? AppColors.primaryLight : const Color(0xFF059669)),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              cat.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: context.textPrimary,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              isExpense ? 'Expense' : 'Income',
+                                              style: TextStyle(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w500,
+                                                color: context.textMuted,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (isDesktop && !widget.pickerMode) ...[
+                                        IconButton(
+                                          icon: Icon(Icons.edit_outlined, size: 16, color: context.textMuted),
+                                          tooltip: 'Edit',
+                                          visualDensity: VisualDensity.compact,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                          onPressed: () => _showEditCategorySheet(cat),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.red),
+                                          tooltip: 'Delete',
+                                          visualDensity: VisualDensity.compact,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                          onPressed: () => _confirmDeleteCategory(cat),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                    loading: () => Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
-                      ),
-                    ),
-                    error: (e, _) => ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 80),
-                          child: Center(
-                            child: Text('$e', style: const TextStyle(color: AppColors.red)),
+                        loading: () => Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: context.isDark ? AppColors.primary : const Color(0xFF15803D),
                           ),
                         ),
-                      ],
+                        error: (e, _) => ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 80),
+                              child: Center(
+                                child: Text('$e', style: const TextStyle(color: AppColors.red)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           ),
         ),
       ),

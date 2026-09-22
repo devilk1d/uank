@@ -105,8 +105,17 @@ void main() {
   test('CurrencyInputFormatter correctly formats and parses nominal numbers', () {
     expect(CurrencyInputFormatter.format(1000000), '1.000.000');
     expect(CurrencyInputFormatter.format(350000), '350.000');
+    expect(CurrencyInputFormatter.format(10.5, currency: 'MYR'), '10.50');
+    expect(CurrencyInputFormatter.format(14.31, currency: 'MYR'), '14.31');
     expect(CurrencyInputFormatter.parse('1.000.000'), 1000000);
     expect(CurrencyInputFormatter.parse('250,000'), 250000);
+    expect(CurrencyInputFormatter.parse('10.50'), 10.5);
+    expect(CurrencyInputFormatter.parse('10,50'), 10.5);
+    expect(CurrencyInputFormatter.parse('14.31'), 14.31);
+    expect(CurrencyInputFormatter.parse('14,31'), 14.31);
+    expect(CurrencyInputFormatter.parse('-RM 14,31'), -14.31);
+    expect(CurrencyInputFormatter.parse('1.250,50'), 1250.5);
+    expect(CurrencyInputFormatter.parse('1,250.50'), 1250.5);
   });
 
   testWidgets('ReceiptOcrAnimationWidget renders animation elements smoothly', (tester) async {

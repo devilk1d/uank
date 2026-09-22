@@ -38,7 +38,9 @@ class _PayBillDialogState extends ConsumerState<PayBillDialog> {
   @override
   void initState() {
     super.initState();
-    _amountController = TextEditingController(text: CurrencyInputFormatter.format(widget.bill.amount));
+    _amountController = TextEditingController(
+      text: CurrencyInputFormatter.format(widget.bill.amount, currency: widget.bill.currency),
+    );
     _selectedAccountId = widget.bill.accountId;
   }
 

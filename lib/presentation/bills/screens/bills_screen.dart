@@ -79,6 +79,9 @@ class BillsScreen extends ConsumerWidget {
                         billsAsync.when(
                           data: (bills) {
                             if (bills.isEmpty) {
+                              if (isDesktop) {
+                                return _buildDesktopEmptyLayout(context, selectedMonth);
+                              }
                               return _buildNoBillsState(context);
                             }
 
@@ -515,6 +518,253 @@ class BillsScreen extends ConsumerWidget {
               label: const Text('Create First Bill', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopEmptyLayout(BuildContext context, DateTime selectedMonth) {
+    final monthName = _monthNames[selectedMonth.month - 1];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left Column: Educational Overview / Feature Highlights
+        Expanded(
+          flex: 5,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: context.cardBg,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: context.cardBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: context.isDark ? 0.25 : 0.05),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.receipt_long_rounded,
+                        color: context.accentIconColor,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Recurring Bills',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: context.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Multi-currency subscription & utility tracker',
+                            style: TextStyle(fontSize: 11, color: context.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _buildGuideFeatureItem(
+                  context,
+                  icon: Icons.notifications_active_outlined,
+                  title: 'Smart Due Date Reminders',
+                  desc: 'Set custom reminder alerts before due date so you never miss a deadline.',
+                ),
+                const SizedBox(height: 14),
+                _buildGuideFeatureItem(
+                  context,
+                  icon: Icons.currency_exchange_rounded,
+                  title: 'Multi-Currency Support',
+                  desc: 'Track and manage IDR and MYR bills seamlessly side-by-side.',
+                ),
+                const SizedBox(height: 14),
+                _buildGuideFeatureItem(
+                  context,
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: 'Automatic Account Link',
+                  desc: 'Optionally link your bills to specific wallets for one-click payment deductions.',
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 24),
+        // Right Column: Action Card with Suggestions
+        Expanded(
+          flex: 7,
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: context.cardBg,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: context.cardBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: context.isDark ? 0.25 : 0.05),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Icon(Icons.receipt_long_outlined, size: 30, color: context.accentIconColor),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No bills registered yet for $monthName',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Add your recurring internet, utilities, or rent to get reminders and track monthly payments.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12.5, color: context.textSecondary, height: 1.4),
+                ),
+                const SizedBox(height: 18),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  onPressed: () => AddBillSheet.show(context),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Create First Bill', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                ),
+                const SizedBox(height: 22),
+                Divider(color: context.cardBorder, height: 1),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'POPULAR BILL CATEGORIES',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: context.textMuted,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildBillSuggestionChip(context, '📶 Internet & Wifi'),
+                    _buildBillSuggestionChip(context, '⚡ Electricity / PLN'),
+                    _buildBillSuggestionChip(context, '🏠 Rent & Housing'),
+                    _buildBillSuggestionChip(context, '🎬 Netflix / Spotify'),
+                    _buildBillSuggestionChip(context, '💧 Water / Utilities'),
+                    _buildBillSuggestionChip(context, '💳 Credit Card'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGuideFeatureItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String desc,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: context.inputBg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: context.cardBorder),
+          ),
+          child: Icon(icon, size: 16, color: context.textSecondary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                desc,
+                style: TextStyle(fontSize: 11, color: context.textSecondary, height: 1.3),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBillSuggestionChip(BuildContext context, String label) {
+    return InkWell(
+      onTap: () => AddBillSheet.show(context),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: context.inputBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.cardBorder),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: context.textPrimary,
+          ),
         ),
       ),
     );

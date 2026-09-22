@@ -107,10 +107,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 ),
                               ),
                               const SizedBox(width: 24),
-                              // Right Column (Recent Transactions / Activity)
+                              // Right Column (Recent Transactions / Activity + Wallets Overview)
                               Expanded(
                                 flex: 5,
-                                child: _buildRecentActivitySection(transactionsAsync, accountMap),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    _buildRecentActivitySection(transactionsAsync, accountMap, limit: 6),
+                                    const SizedBox(height: 20),
+                                    balancesAsync.maybeWhen(
+                                      data: (balances) => _buildDesktopWalletsOverview(balances),
+                                      orElse: () => const SizedBox.shrink(),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -802,8 +812,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _buildRecentActivitySection(
     AsyncValue<List<Transaction>> transactionsAsync,
-    Map<String, AccountBalance> accountMap,
-  ) {
+    Map<String, AccountBalance> accountMap, {
+    int limit = 5,
+  }) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -890,7 +901,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
               return Column(
                 children: transactions
-                    .take(5)
+                    .take(limit)
                     .map((t) {
                       final acc = accountMap[t.accountId];
                       final isMyr = acc?.currency == 'MYR';
@@ -924,6 +935,150 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               return Text('$e', style: const TextStyle(color: AppColors.red, fontSize: 12));
             },
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopWalletsOverview(List<AccountBalance> balances) {
+    final active = balances.where((b) => b.isActive).toList();
+    if (active.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: context.cardBorder),
+        boxShadow: context.isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Wallets & Accounts',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Manage',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 11,
+                      color: context.textSecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...active.take(4).map((acc) {
+            final isMyr = acc.currency == 'MYR';
+            final formattedVal = isMyr ? 'RM ${_formatMyr(acc.balance)}' : 'Rp ${_formatRupiah(acc.balance)}';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: context.inputBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: context.cardBorder),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: (acc.type == 'bank'
+                                ? const Color(0xFF3B82F6)
+                                : (acc.type == 'ewallet'
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFFF59E0B)))
+                            .withValues(alpha: 0.15),
+                      ),
+                      child: Icon(
+                        acc.type == 'bank'
+                            ? Icons.account_balance_rounded
+                            : (acc.type == 'ewallet'
+                                ? Icons.account_balance_wallet_rounded
+                                : Icons.payments_rounded),
+                        size: 16,
+                        color: acc.type == 'bank'
+                            ? const Color(0xFF3B82F6)
+                            : (acc.type == 'ewallet'
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFF59E0B)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            acc.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            acc.type.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: context.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      formattedVal,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
         ],
       ),
     );
